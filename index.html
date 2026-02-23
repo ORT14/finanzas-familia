@@ -1,0 +1,3977 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanzas Familia</title>
+    
+    <!-- PWA Configuration -->
+    <meta name="description" content="Gestión de finanzas familiares - Oriol y Paula">
+    <meta name="theme-color" content="#1E3A5F">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Finanzas">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- SheetJS for Excel/CSV import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1E3A5F;
+            --primary-light: #2E6DA4;
+            --success: #1E7E34;
+            --danger: #C0392B;
+            --warning: #D35400;
+            --gray-50: #F8F9FA;
+            --gray-100: #E9ECEF;
+            --gray-200: #DEE2E6;
+            --gray-600: #6C757D;
+            --gray-900: #212529;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.6;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header p {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .nav {
+            padding: 16px 0;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            border-left-color: white;
+            font-weight: 600;
+        }
+
+        .nav-item-icon {
+            display: inline-block;
+            width: 24px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        /* Header */
+        .view-header {
+            margin-bottom: 32px;
+        }
+
+        .view-header h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .view-header p {
+            color: var(--gray-600);
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-600);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--gray-900);
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-light);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #27AE60;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #E74C3C;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--gray-50);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--gray-900);
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: var(--gray-50);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #D4EDDA;
+            color: #155724;
+        }
+
+        .badge-danger {
+            background: #F8D7DA;
+            color: #721C24;
+        }
+
+        .badge-warning {
+            background: #FFF3CD;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #D1ECF1;
+            color: #0C5460;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .modal-footer .btn {
+            flex: 1;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-info {
+            background: #D1ECF1;
+            color: #0C5460;
+            border: 1px solid #BEE5EB;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Category tabs */
+        .category-tab {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--gray-600);
+        }
+
+        .category-tab:hover {
+            color: var(--gray-900);
+            background: var(--gray-50);
+        }
+
+        .category-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Category list */
+        .category-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            transition: background 0.2s;
+        }
+
+        .category-item:hover {
+            background: var(--gray-50);
+        }
+
+        .category-item:last-child {
+            border-bottom: none;
+        }
+
+        .category-info {
+            flex: 1;
+        }
+
+        .category-name {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .category-usage {
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        .category-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .subcategory-list {
+            margin-top: 12px;
+            padding-left: 20px;
+            border-left: 3px solid var(--gray-200);
+        }
+
+        .subcategory-item {
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--gray-50);
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .subcategory-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .needs-review-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: var(--warning);
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>💰 Finanzas Familia</h1>
+                <p>Familia López</p>
+            </div>
+            <nav class="nav">
+                <a class="nav-item active" data-view="dashboard">
+                    <span class="nav-item-icon">📊</span>
+                    Dashboard
+                </a>
+                <a class="nav-item" data-view="movements">
+                    <span class="nav-item-icon">📋</span>
+                    Movimientos
+                </a>
+                <a class="nav-item" data-view="categories">
+                    <span class="nav-item-icon">🏷️</span>
+                    Categorías
+                </a>
+                <a class="nav-item" data-view="settings">
+                    <span class="nav-item-icon">⚙️</span>
+                    Importar / Ajustes
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <div class="view active" id="view-dashboard">
+                <div class="view-header">
+                    <h2>Dashboard</h2>
+                    <p>Resumen de tus finanzas</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <h3 class="card-title" style="margin-bottom: 16px;">🔍 Filtros</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                        <!-- Date Range -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Período</label>
+                            <select class="form-control" id="filter-date-range" onchange="applyDashboardFilters()">
+                                <option value="this-month">Este mes</option>
+                                <option value="last-month">Mes anterior</option>
+                                <option value="this-quarter">Este trimestre</option>
+                                <option value="this-year">Este año</option>
+                                <option value="last-year">Año anterior</option>
+                                <option value="last-30">Últimos 30 días</option>
+                                <option value="last-90">Últimos 90 días</option>
+                                <option value="all">Todo</option>
+                                <option value="custom">Personalizado...</option>
+                            </select>
+                        </div>
+
+                        <!-- Custom dates -->
+                        <div id="custom-dates" style="display: none;">
+                            <label class="form-label">Desde</label>
+                            <input type="date" class="form-control" id="filter-date-from" onchange="applyDashboardFilters()">
+                        </div>
+                        <div id="custom-dates-to" style="display: none;">
+                            <label class="form-label">Hasta</label>
+                            <input type="date" class="form-control" id="filter-date-to" onchange="applyDashboardFilters()">
+                        </div>
+
+                        <!-- Accounts (multi) -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Cuentas</label>
+                            <select class="form-control" id="filter-accounts" multiple size="1" onchange="applyDashboardFilters()" 
+                                    style="height: 38px; overflow: hidden;">
+                                <option value="all" selected>Todas las cuentas</option>
+                            </select>
+                        </div>
+
+                        <!-- Type -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-control" id="filter-type" onchange="applyDashboardFilters()">
+                                <option value="all">Todos</option>
+                                <option value="income">Solo ingresos</option>
+                                <option value="expense">Solo gastos</option>
+                                <option value="transfer">Solo transferencias</option>
+                            </select>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Categoría</label>
+                            <select class="form-control" id="filter-category" onchange="applyDashboardFilters()">
+                                <option value="all">Todas</option>
+                            </select>
+                        </div>
+
+                        <!-- Person -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Persona</label>
+                            <select class="form-control" id="filter-person" onchange="applyDashboardFilters()">
+                                <option value="all">Todas</option>
+                                <option value="Oriol">Oriol</option>
+                                <option value="Paula">Paula</option>
+                                <option value="Lucas">Lucas</option>
+                                <option value="Familia">Familia</option>
+                            </select>
+                        </div>
+
+                        <!-- Search -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Buscar</label>
+                            <input type="text" class="form-control" id="filter-search" placeholder="Descripción..." onkeyup="applyDashboardFilters()">
+                        </div>
+                    </div>
+
+                    <!-- Exclude transfers toggle -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="filter-exclude-transfers" checked onchange="applyDashboardFilters()" 
+                               style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="filter-exclude-transfers" style="cursor: pointer; font-size: 14px;">
+                            Excluir transferencias del balance
+                        </label>
+                    </div>
+
+                    <button class="btn btn-sm" style="background: var(--gray-200); margin-top: 12px;" onclick="resetDashboardFilters()">
+                        🔄 Limpiar filtros
+                    </button>
+                </div>
+
+                <!-- KPIs -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div class="card" style="background: linear-gradient(135deg, #1E7E34 0%, #27AE60 100%); color: white;">
+                        <div style="font-size: 14px; opacity: 0.9;">💚 Ingresos</div>
+                        <div style="font-size: 32px; font-weight: 700; margin-top: 8px;" id="kpi-income">0.00 €</div>
+                        <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;" id="kpi-income-count">0 movimientos</div>
+                    </div>
+
+                    <div class="card" style="background: linear-gradient(135deg, #C0392B 0%, #E74C3C 100%); color: white;">
+                        <div style="font-size: 14px; opacity: 0.9;">🔴 Gastos</div>
+                        <div style="font-size: 32px; font-weight: 700; margin-top: 8px;" id="kpi-expenses">0.00 €</div>
+                        <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;" id="kpi-expenses-count">0 movimientos</div>
+                    </div>
+
+                    <div class="card" style="background: linear-gradient(135deg, #1E3A5F 0%, #2E6DA4 100%); color: white;">
+                        <div style="font-size: 14px; opacity: 0.9;">⚖️ Balance</div>
+                        <div style="font-size: 32px; font-weight: 700; margin-top: 8px;" id="kpi-balance">0.00 €</div>
+                        <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;" id="kpi-savings">0% ahorro</div>
+                    </div>
+
+                    <div class="card" style="background: linear-gradient(135deg, #8E44AD 0%, #9B59B6 100%); color: white;">
+                        <div style="font-size: 14px; opacity: 0.9;">🔄 Transferencias</div>
+                        <div style="font-size: 32px; font-weight: 700; margin-top: 8px;" id="kpi-transfers">0.00 €</div>
+                        <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;" id="kpi-transfers-count">0 movimientos</div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+                    <div class="card">
+                        <h3 class="card-title">📈 Tendencia Ingresos vs Gastos</h3>
+                        <canvas id="chart-trend"></canvas>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-title">🔴 Gastos por Categoría</h3>
+                        <canvas id="chart-expenses"></canvas>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+                    <div class="card">
+                        <h3 class="card-title">💚 Ingresos por Categoría</h3>
+                        <canvas id="chart-income"></canvas>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-title">🔄 Transferencias</h3>
+                        <canvas id="chart-transfers"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Movements -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📅 Resumen Mensual del Año</h3>
+                    </div>
+                    <div id="monthly-summary-table"></div>
+                </div>
+
+                <!-- Expenses by Category -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🏷️ Gastos por Categoría</h3>
+                    </div>
+                    <div id="expenses-by-category-table"></div>
+                </div>
+
+                <!-- All Movements Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📒 Registro de Movimientos</h3>
+                    </div>
+
+                    <!-- Tabs for different views -->
+                    <div style="border-bottom: 2px solid var(--gray-200); margin-bottom: 16px; display: flex; gap: 4px;">
+                        <button onclick="switchMovementsView('all')" id="tab-all" 
+                                class="btn btn-sm" 
+                                style="border-radius: 8px 8px 0 0; background: var(--primary); color: white; border: none; padding: 12px 24px;">
+                            📋 Todos los Movimientos
+                        </button>
+                        <button onclick="switchMovementsView('income')" id="tab-income" 
+                                class="btn btn-sm" 
+                                style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 24px;">
+                            📥 Ingresos
+                        </button>
+                        <button onclick="switchMovementsView('expense')" id="tab-expense" 
+                                class="btn btn-sm" 
+                                style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 24px;">
+                            📤 Gastos
+                        </button>
+                        <button onclick="switchMovementsView('transfer')" id="tab-transfer" 
+                                class="btn btn-sm" 
+                                style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 24px;">
+                            🔄 Transferencias
+                        </button>
+                    </div>
+
+                    <div id="dashboard-movements-table"></div>
+                </div>
+            </div>
+
+            <!-- Movements View -->
+            <div class="view" id="view-movements">
+                <div class="view-header">
+                    <h2>📒 Registro de Movimientos</h2>
+                    <p>Gestiona todos tus ingresos, gastos y transferencias</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <!-- Tabs for different views -->
+                            <div style="display: flex; gap: 4px;">
+                                <button onclick="switchMovementsViewMain('all')" id="tab-main-all" 
+                                        class="btn btn-sm" 
+                                        style="border-radius: 8px 8px 0 0; background: var(--primary); color: white; border: none; padding: 12px 20px; font-size: 14px;">
+                                    📋 Todos
+                                </button>
+                                <button onclick="switchMovementsViewMain('income')" id="tab-main-income" 
+                                        class="btn btn-sm" 
+                                        style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 20px; font-size: 14px;">
+                                    📥 Ingresos
+                                </button>
+                                <button onclick="switchMovementsViewMain('expense')" id="tab-main-expense" 
+                                        class="btn btn-sm" 
+                                        style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 20px; font-size: 14px;">
+                                    📤 Gastos
+                                </button>
+                                <button onclick="switchMovementsViewMain('transfer')" id="tab-main-transfer" 
+                                        class="btn btn-sm" 
+                                        style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 20px; font-size: 14px;">
+                                    🔄 Transferencias
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="showAddMovementModal()" style="white-space: nowrap;">
+                            + Nuevo movimiento
+                        </button>
+                    </div>
+
+                    <div id="movements-table-container"></div>
+                </div>
+            </div>
+
+            <!-- Categories View -->
+            <div class="view" id="view-categories">
+                <div class="view-header">
+                    <h2>Categorías</h2>
+                    <p>Organiza tus gastos e ingresos</p>
+                </div>
+
+                <!-- Pending Review Alert -->
+                <div id="categories-pending-alert" style="display: none;">
+                    <div class="alert" style="background: #FFF3CD; border: 1px solid #FFC107; color: #856404; margin-bottom: 24px;">
+                        <strong>⚠️ Categorías pendientes de revisión</strong><br>
+                        Hay <span id="pending-count">0</span> categorías marcadas como pendientes de revisión tras la importación.
+                        <button class="btn btn-sm" style="background: var(--warning); color: white; margin-left: 12px;" onclick="showPendingModal()">
+                            Revisar ahora
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div style="border-bottom: 2px solid var(--gray-200); margin-bottom: 24px;">
+                    <div style="display: flex; gap: 8px;">
+                        <button class="category-tab active" data-type="expense" onclick="switchCategoryTab('expense')">
+                            🔴 Gastos
+                        </button>
+                        <button class="category-tab" data-type="income" onclick="switchCategoryTab('income')">
+                            💚 Ingresos
+                        </button>
+                        <button class="category-tab" data-type="transfer" onclick="switchCategoryTab('transfer')">
+                            🔄 Transferencias
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search and Add -->
+                <div class="card">
+                    <div class="card-header">
+                        <input type="text" id="category-search" placeholder="🔍 Buscar categoría..." 
+                               onkeyup="renderCategoriesList()" 
+                               style="flex: 1; max-width: 400px; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 6px;">
+                        <button class="btn btn-primary" onclick="showAddCategoryModal()">+ Nueva categoría</button>
+                    </div>
+
+                    <div id="categories-list-container"></div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div class="view" id="view-settings">
+                <div class="view-header">
+                    <h2>Importar / Ajustes</h2>
+                    <p>Configuración y carga de datos</p>
+                </div>
+
+                <!-- Import Excel -->
+                <div class="card">
+                    <h3 class="card-title">📊 Importar Excel</h3>
+                    <p style="color: var(--gray-600); margin-bottom: 16px;">
+                        Importa categorías y movimientos desde tu archivo Excel. Debe contener hojas "Categorías" y "Movimientos".
+                    </p>
+                    
+                    <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display: none;" onchange="handleExcelImport(event)">
+                    <button class="btn btn-primary" onclick="document.getElementById('excel-file-input').click()">
+                        📥 Seleccionar archivo Excel
+                    </button>
+
+                    <div id="import-log" style="margin-top: 20px; display: none;">
+                        <div style="background: var(--gray-50); padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto;" id="import-log-content"></div>
+                    </div>
+
+                    <div id="import-summary" style="margin-top: 20px; display: none;"></div>
+                </div>
+
+                <!-- Import CSV -->
+                <div class="card">
+                    <h3 class="card-title">📄 Importar CSV de banco</h3>
+                    <p style="color: var(--gray-600); margin-bottom: 16px;">
+                        Importa movimientos desde CSV de tu banco (formato: Fecha, Descripción, Importe).
+                    </p>
+
+                    <div class="form-group" style="max-width: 400px; margin-bottom: 16px;">
+                        <label class="form-label" for="csv-default-account">Cuenta destino</label>
+                        <select class="form-control" id="csv-default-account">
+                            <option value="">Seleccionar cuenta...</option>
+                        </select>
+                    </div>
+
+                    <input type="file" id="csv-file-input" accept=".csv,.txt" style="display: none;" onchange="handleCSVImport(event)">
+                    <button class="btn btn-primary" onclick="document.getElementById('csv-file-input').click()">
+                        📥 Seleccionar archivo CSV
+                    </button>
+
+                    <div id="csv-import-log" style="margin-top: 20px; display: none;">
+                        <div style="background: var(--gray-50); padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto;" id="csv-import-log-content"></div>
+                    </div>
+
+                    <div id="csv-import-summary" style="margin-top: 20px; display: none;"></div>
+                </div>
+
+                <!-- Import Categories and Categorize -->
+                <div class="card" style="background: linear-gradient(135deg, #27AE60 0%, #1E7E34 100%); color: white;">
+                    <h3 style="color: white; margin-bottom: 12px;">🏷️ Importar Categorías del Excel</h3>
+                    <p style="opacity: 0.9; margin-bottom: 20px;">
+                        Importa automáticamente las 19 categorías con 68 subcategorías del Excel de contabilidad familiar y categoriza tus movimientos existentes.
+                    </p>
+                    
+                    <button class="btn" onclick="importCategoriesAndCategorizeMovements()" 
+                            style="background: white; color: #1E7E34; width: 100%; font-weight: 700; font-size: 16px;">
+                        🚀 Importar y Categorizar Ahora
+                    </button>
+
+                    <div id="categorize-log" style="margin-top: 20px; display: none;">
+                        <div style="background: rgba(255,255,255,0.95); color: #155724; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; max-height: 400px; overflow-y: auto;" id="categorize-log-content"></div>
+                    </div>
+                </div>
+
+                <!-- System Info -->
+                <div class="card">
+                    <h3 class="card-title">ℹ️ Información del sistema</h3>
+                    <div class="alert alert-info">
+                        <strong>Versión del esquema:</strong> <span id="schema-version-display">-</span><br>
+                        <strong>Total movimientos:</strong> <span id="total-movements-display">-</span><br>
+                        <strong>Total categorías:</strong> <span id="total-categories-display">-</span><br>
+                        <strong>Categorías pendientes revisión:</strong> <span id="categories-pending-display">-</span>
+                    </div>
+                    <button class="btn btn-danger" onclick="resetApp()">🗑️ Resetear aplicación</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Movement Modal -->
+    <div class="modal" id="movement-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="movement-modal-title">Nuevo movimiento</h3>
+            </div>
+
+            <!-- Quick Templates -->
+            <div id="templates-quick" style="margin-bottom: 20px; display: none;">
+                <label class="form-label">⭐ Plantillas rápidas</label>
+                <div id="templates-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+            </div>
+
+            <form id="movement-form" onsubmit="saveMovement(event)">
+                <input type="hidden" id="movement-id">
+
+                <div class="form-group">
+                    <label class="form-label" for="movement-type">Tipo *</label>
+                    <select class="form-control" id="movement-type" required onchange="updateMovementTypeFields()">
+                        <option value="income">Ingreso</option>
+                        <option value="expense">Gasto</option>
+                        <option value="transfer">Transferencia</option>
+                    </select>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="movement-date">Fecha *</label>
+                        <input type="date" class="form-control" id="movement-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="movement-amount">Importe *</label>
+                        <input type="number" step="0.01" class="form-control" id="movement-amount" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="movement-description">Descripción *</label>
+                    <input type="text" class="form-control" id="movement-description" required 
+                           oninput="handleDescriptionInput(this.value)" 
+                           list="description-suggestions">
+                    <datalist id="description-suggestions"></datalist>
+                </div>
+
+                <!-- For income/expense -->
+                <div id="account-field" class="form-group">
+                    <label class="form-label" for="movement-account">Cuenta *</label>
+                    <select class="form-control" id="movement-account" required>
+                        <option value="">Seleccionar cuenta...</option>
+                    </select>
+                </div>
+
+                <!-- For transfers -->
+                <div id="transfer-fields" style="display: none;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="movement-from">Desde *</label>
+                            <select class="form-control" id="movement-from">
+                                <option value="">Seleccionar cuenta...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="movement-to">Hacia *</label>
+                            <select class="form-control" id="movement-to">
+                                <option value="">Seleccionar cuenta...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="movement-category">Categoría</label>
+                    <select class="form-control" id="movement-category">
+                        <option value="">Sin categorizar</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn" style="background: var(--gray-600); color: white;" onclick="closeMovementModal()">Cancelar</button>
+                    <button type="button" class="btn" style="background: var(--warning); color: white;" onclick="saveAsTemplate()">⭐ Guardar plantilla</button>
+                    <button type="submit" class="btn btn-success">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Category Modal -->
+    <div class="modal" id="category-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="category-modal-title">Nueva categoría</h3>
+            </div>
+
+            <form id="category-form" onsubmit="saveCategory(event)">
+                <input type="hidden" id="category-id">
+                <input type="hidden" id="category-type">
+
+                <div class="form-group">
+                    <label class="form-label" for="category-name">Nombre de la categoría *</label>
+                    <input type="text" class="form-control" id="category-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Subcategorías</label>
+                    <div id="subcategories-list" style="margin-bottom: 12px;"></div>
+                    <button type="button" class="btn btn-sm" style="background: var(--gray-200);" onclick="addSubcategoryField()">
+                        + Añadir subcategoría
+                    </button>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn" style="background: var(--gray-600); color: white;" onclick="closeCategoryModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Category Modal (with reassignment) -->
+    <div class="modal" id="delete-category-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">⚠️ Eliminar categoría</h3>
+            </div>
+
+            <div id="delete-category-content"></div>
+
+            <div class="modal-footer" id="delete-category-footer"></div>
+        </div>
+    </div>
+
+    <!-- Pending Review Modal -->
+    <div class="modal" id="pending-modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">⚠️ Categorías pendientes de revisión</h3>
+            </div>
+
+            <p style="color: var(--gray-600); margin-bottom: 20px;">
+                Estas categorías fueron creadas automáticamente durante la importación. Revísalas y confirma que están correctas.
+            </p>
+
+            <div id="pending-categories-list"></div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closePendingModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // DATA MODEL & STATE MANAGEMENT
+        // ============================================================================
+
+        const CURRENT_SCHEMA_VERSION = 1;
+
+        const DEFAULT_STATE = {
+            schemaVersion: CURRENT_SCHEMA_VERSION,
+            accounts: [
+                { id: 'cuenta-comun', name: 'Cuenta Común (Gastos Familia)', type: 'shared', users: ['Oriol', 'Paula'] },
+                { id: 'cuenta-oriol', name: 'Cuenta Personal Oriol', type: 'personal', users: ['Oriol'] },
+                { id: 'cuenta-paula', name: 'Cuenta Personal Paula', type: 'personal', users: ['Paula'] },
+                { id: 'cuenta-ahorro', name: 'Cuenta Ahorro Común', type: 'savings', users: ['Oriol', 'Paula'] },
+                { id: 'cuenta-lucas', name: 'Cuenta Lucas', type: 'personal', users: ['Lucas'] }
+            ],
+            categories: [
+                { id: 'sin-categorizar', name: 'Sin categorizar', type: 'expense', parent: null, needsReview: false, subcategories: [] }
+            ],
+            movements: [],
+            templates: [
+                {
+                    id: 'tpl-oriol-lucas',
+                    name: '💸 Oriol → Lucas (mensual)',
+                    type: 'transfer',
+                    amount: 100,
+                    description: 'Transferencia mensual Lucas',
+                    fromAccountId: 'cuenta-oriol',
+                    toAccountId: 'cuenta-lucas',
+                    categoryId: 'cat-transferencias',
+                    subcategoryId: 'subcat-transfer-lucas',
+                    favorite: true
+                },
+                {
+                    id: 'tpl-paula-lucas',
+                    name: '💸 Paula → Lucas (mensual)',
+                    type: 'transfer',
+                    amount: 100,
+                    description: 'Transferencia mensual Lucas',
+                    fromAccountId: 'cuenta-paula',
+                    toAccountId: 'cuenta-lucas',
+                    categoryId: 'cat-transferencias',
+                    subcategoryId: 'subcat-transfer-lucas',
+                    favorite: true
+                },
+                {
+                    id: 'tpl-ahorro-comun',
+                    name: '💰 Ahorro Común',
+                    type: 'transfer',
+                    amount: 500,
+                    description: 'Ahorro mensual',
+                    fromAccountId: 'cuenta-comun',
+                    toAccountId: 'cuenta-ahorro',
+                    categoryId: 'cat-transferencias',
+                    subcategoryId: 'subcat-transfer-ahorro',
+                    favorite: true
+                },
+                {
+                    id: 'tpl-aportacion-comun-oriol',
+                    name: '🏠 Aportación Común (Oriol)',
+                    type: 'transfer',
+                    amount: 1000,
+                    description: 'Aportación cuenta común',
+                    fromAccountId: 'cuenta-oriol',
+                    toAccountId: 'cuenta-comun',
+                    categoryId: 'cat-transferencias',
+                    subcategoryId: 'subcat-transfer-comun',
+                    favorite: true
+                },
+                {
+                    id: 'tpl-aportacion-comun-paula',
+                    name: '🏠 Aportación Común (Paula)',
+                    type: 'transfer',
+                    amount: 1000,
+                    description: 'Aportación cuenta común',
+                    fromAccountId: 'cuenta-paula',
+                    toAccountId: 'cuenta-comun',
+                    categoryId: 'cat-transferencias',
+                    subcategoryId: 'subcat-transfer-comun',
+                    favorite: true
+                }
+            ],
+            rules: [
+                { id: 'rule-1', containsText: 'mercadona', categoryId: 'cat-alimentacion', priority: 1 },
+                { id: 'rule-2', containsText: 'spotify', categoryId: 'cat-ocio-digital', priority: 1 },
+                { id: 'rule-3', containsText: 'netflix', categoryId: 'cat-ocio-digital', priority: 1 },
+                { id: 'rule-4', containsText: 'amazon', categoryId: 'cat-compras-online', priority: 1 },
+                { id: 'rule-5', containsText: 'gasolina', categoryId: 'cat-transporte', priority: 1 },
+                { id: 'rule-6', containsText: 'shell', categoryId: 'cat-transporte', priority: 1 },
+                { id: 'rule-7', containsText: 'repsol', categoryId: 'cat-transporte', priority: 1 }
+            ]
+        };
+
+        // ============================================================================
+        // HELPERS
+        // ============================================================================
+
+        function normalizeText(text) {
+            if (!text) return '';
+            return text
+                .toLowerCase()
+                .trim()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/\s+/g, ' ');
+        }
+
+        function loadState() {
+            try {
+                const stored = localStorage.getItem('finanzas-familia-state');
+                if (!stored) {
+                    console.log('No hay estado guardado, usando estado por defecto');
+                    return JSON.parse(JSON.stringify(DEFAULT_STATE));
+                }
+                
+                const state = JSON.parse(stored);
+                console.log('Estado cargado, versión:', state.schemaVersion);
+                
+                // Migrar si es necesario
+                if (state.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+                    console.log('Migrando estado de versión', state.schemaVersion, 'a', CURRENT_SCHEMA_VERSION);
+                    return migrateState(state);
+                }
+                
+                return state;
+            } catch (error) {
+                console.error('Error al cargar estado:', error);
+                return JSON.parse(JSON.stringify(DEFAULT_STATE));
+            }
+        }
+
+        function saveState(state) {
+            try {
+                localStorage.setItem('finanzas-familia-state', JSON.stringify(state));
+                console.log('Estado guardado correctamente');
+                return true;
+            } catch (error) {
+                console.error('Error al guardar estado:', error);
+                alert('Error al guardar los datos. Por favor, verifica el espacio disponible.');
+                return false;
+            }
+        }
+
+        function migrateState(oldState) {
+            const state = JSON.parse(JSON.stringify(oldState));
+            const oldVersion = state.schemaVersion || 0;
+
+            // Migración de versión 0 a 1
+            if (oldVersion < 1) {
+                console.log('Migrando de versión 0 a 1...');
+                
+                // Asegurar estructura básica
+                if (!state.accounts) state.accounts = DEFAULT_STATE.accounts;
+                if (!state.categories) state.categories = DEFAULT_STATE.categories;
+                if (!state.movements) state.movements = [];
+                if (!state.templates) state.templates = [];
+                if (!state.rules) state.rules = [];
+                
+                // Normalizar movimientos existentes
+                if (state.movements && state.movements.length > 0) {
+                    state.movements = state.movements.map(mov => ({
+                        id: mov.id || Date.now() + Math.random(),
+                        type: mov.type === 'Ingreso' ? 'income' : mov.type === 'Gasto' ? 'expense' : mov.type || 'expense',
+                        date: mov.date || new Date().toISOString().split('T')[0],
+                        amount: parseFloat(mov.amount) || 0,
+                        description: mov.description || '',
+                        accountId: mov.account || mov.accountId || 'cuenta-comun',
+                        categoryId: mov.categoryId || 'sin-categorizar',
+                        fromAccountId: mov.fromAccountId || null,
+                        toAccountId: mov.toAccountId || null,
+                        notes: mov.notes || '',
+                        createdAt: mov.createdAt || new Date().toISOString()
+                    }));
+                }
+                
+                state.schemaVersion = 1;
+            }
+
+            // Futuras migraciones se añadirían aquí
+            // if (oldVersion < 2) { ... }
+
+            return state;
+        }
+
+        // ============================================================================
+        // GLOBAL STATE
+        // ============================================================================
+
+        let state = loadState();
+
+        // ============================================================================
+        // NAVIGATION
+        // ============================================================================
+
+        function initNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const viewId = item.dataset.view;
+                    showView(viewId);
+                });
+            });
+        }
+
+        function showView(viewId) {
+            // Update nav active state
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-view="${viewId}"]`).classList.add('active');
+
+            // Update view active state
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.remove('active');
+            });
+            document.getElementById(`view-${viewId}`).classList.add('active');
+
+            // Refresh view content
+            if (viewId === 'dashboard') {
+                populateDashboardFilters();
+                applyDashboardFilters();
+            } else if (viewId === 'movements') {
+                renderMovementsTable();
+            } else if (viewId === 'categories') {
+                renderCategoriesList();
+            } else if (viewId === 'settings') {
+                updateSettingsInfo();
+            }
+        }
+
+        // ============================================================================
+        // TEMPLATES & RULES
+        // ============================================================================
+
+        function applyRulesToDescription(description) {
+            if (!description) return null;
+            
+            const normalizedDesc = normalizeText(description);
+            
+            // Find matching rule (highest priority first)
+            const rules = state.rules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+            
+            for (const rule of rules) {
+                if (normalizedDesc.includes(normalizeText(rule.containsText))) {
+                    return {
+                        categoryId: rule.categoryId,
+                        subcategoryId: rule.subcategoryId || null
+                    };
+                }
+            }
+            
+            return null;
+        }
+
+        function getDescriptionSuggestions(partial) {
+            if (!partial || partial.length < 2) return [];
+            
+            const normalized = normalizeText(partial);
+            const descriptions = new Set();
+            
+            state.movements.forEach(mov => {
+                if (normalizeText(mov.description).includes(normalized)) {
+                    descriptions.add(mov.description);
+                }
+            });
+            
+            return Array.from(descriptions).slice(0, 5);
+        }
+
+        function applyTemplate(templateId) {
+            const template = state.templates.find(t => t.id === templateId);
+            if (!template) return;
+
+            document.getElementById('movement-type').value = template.type;
+            document.getElementById('movement-amount').value = template.amount || '';
+            document.getElementById('movement-description').value = template.description || '';
+            document.getElementById('movement-category').value = template.categoryId || '';
+
+            updateMovementTypeFields();
+
+            if (template.type === 'transfer') {
+                document.getElementById('movement-from').value = template.fromAccountId || '';
+                document.getElementById('movement-to').value = template.toAccountId || '';
+            } else {
+                document.getElementById('movement-account').value = template.accountId || '';
+            }
+
+            // Apply subcategory if exists
+            if (template.subcategoryId) {
+                // Note: subcategory selector would need to be added to movement form
+            }
+        }
+
+        function saveAsTemplate() {
+            const type = document.getElementById('movement-type').value;
+            const amount = parseFloat(document.getElementById('movement-amount').value) || 0;
+            const description = document.getElementById('movement-description').value;
+            const categoryId = document.getElementById('movement-category').value;
+
+            let templateName = prompt('Nombre de la plantilla:', description.substring(0, 30));
+            if (!templateName) return;
+
+            const template = {
+                id: `tpl-${Date.now()}`,
+                name: templateName,
+                type: type,
+                amount: amount,
+                description: description,
+                categoryId: categoryId || 'sin-categorizar',
+                subcategoryId: null,
+                favorite: false
+            };
+
+            if (type === 'transfer') {
+                template.fromAccountId = document.getElementById('movement-from').value;
+                template.toAccountId = document.getElementById('movement-to').value;
+            } else {
+                template.accountId = document.getElementById('movement-account').value;
+            }
+
+            state.templates.push(template);
+            saveState(state);
+            alert('✅ Plantilla guardada: ' + templateName);
+        }
+
+        // ============================================================================
+        // MOVEMENTS
+        // ============================================================================
+
+        let currentMovementsViewMain = 'all';
+
+        function switchMovementsViewMain(view) {
+            currentMovementsViewMain = view;
+            
+            // Update tab styles
+            ['all', 'income', 'expense', 'transfer'].forEach(v => {
+                const tab = document.getElementById(`tab-main-${v}`);
+                if (tab) {
+                    if (v === view) {
+                        tab.style.background = 'var(--primary)';
+                        tab.style.color = 'white';
+                        tab.style.fontWeight = '700';
+                    } else {
+                        tab.style.background = 'var(--gray-100)';
+                        tab.style.color = 'var(--gray-900)';
+                        tab.style.fontWeight = '400';
+                    }
+                }
+            });
+
+            // Re-render table
+            renderMovementsTable();
+        }
+
+        function renderMovementsTable() {
+            const container = document.getElementById('movements-table-container');
+            
+            // Filter by current view
+            let filtered = state.movements;
+            if (currentMovementsViewMain !== 'all') {
+                filtered = state.movements.filter(m => m.type === currentMovementsViewMain);
+            }
+
+            if (filtered.length === 0) {
+                let emptyMessage = 'No hay movimientos';
+                if (currentMovementsViewMain === 'income') emptyMessage = 'No hay ingresos registrados';
+                else if (currentMovementsViewMain === 'expense') emptyMessage = 'No hay gastos registrados';
+                else if (currentMovementsViewMain === 'transfer') emptyMessage = 'No hay transferencias registradas';
+                
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-title">${emptyMessage}</div>
+                        <div class="empty-state-text">Añade tu primer movimiento para empezar a gestionar tus finanzas</div>
+                        <button class="btn btn-primary" onclick="showAddMovementModal()">+ Añadir movimiento</button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by date descending
+            const sorted = filtered.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const rows = sorted.map(mov => {
+                const account = state.accounts.find(a => a.id === mov.accountId || a.id === mov.fromAccountId);
+                const category = state.categories.find(c => c.id === mov.categoryId);
+                
+                // Get subcategory name
+                let subcategoryName = '';
+                if (mov.subcategoryId && category && category.subcategories) {
+                    const subcat = category.subcategories.find(s => s.id === mov.subcategoryId);
+                    if (subcat) subcategoryName = subcat.name;
+                }
+                
+                let typeLabel, typeBadge;
+                if (mov.type === 'income') {
+                    typeLabel = 'Ingreso';
+                    typeBadge = 'badge-success';
+                } else if (mov.type === 'expense') {
+                    typeLabel = 'Gasto';
+                    typeBadge = 'badge-danger';
+                } else {
+                    typeLabel = 'Transferencia';
+                    typeBadge = 'badge-info';
+                }
+
+                // Determine person from account
+                let person = '';
+                if (account) {
+                    if (account.users.length > 1) {
+                        person = 'Familia';
+                    } else if (account.users.includes('Oriol')) {
+                        person = 'Oriol';
+                    } else if (account.users.includes('Paula')) {
+                        person = 'Paula';
+                    } else if (account.users.includes('Lucas')) {
+                        person = 'Lucas';
+                    }
+                }
+
+                // Payment method - infer from type
+                let method = '-';
+                if (mov.type === 'transfer') {
+                    method = 'Transferencia';
+                } else if (mov.type === 'income') {
+                    method = 'Transfer. bancaria';
+                } else {
+                    method = 'Tarjeta débito';
+                }
+
+                return `
+                    <tr>
+                        <td style="white-space: nowrap; font-size: 13px;">${mov.date}</td>
+                        <td style="font-size: 13px;">${account ? account.name : 'N/A'}</td>
+                        <td><span class="badge ${typeBadge}">${typeLabel}</span></td>
+                        <td><strong>${category ? category.name : 'Sin categoría'}</strong></td>
+                        <td style="font-size: 13px;">${subcategoryName || '-'}</td>
+                        <td><strong>${mov.description}</strong></td>
+                        <td style="text-align: right; font-weight: 700; color: ${mov.type === 'expense' ? '#C0392B' : mov.type === 'income' ? '#1E7E34' : '#8E44AD'}; white-space: nowrap;">
+                            ${mov.amount.toFixed(2)} €
+                        </td>
+                        <td style="font-size: 12px; color: var(--gray-600);">${method}</td>
+                        <td style="font-size: 13px;">${person}</td>
+                        <td style="white-space: nowrap;">
+                            <button class="btn btn-sm" style="background: var(--primary-light); color: white;" 
+                                    onclick="editMovement('${mov.id}')" title="Editar">✏️</button>
+                            <button class="btn btn-sm" style="background: var(--warning); color: white;" 
+                                    onclick="duplicateMovement('${mov.id}')" title="Duplicar">📋</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteMovement('${mov.id}')" title="Eliminar">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Calculate total
+            const total = sorted.reduce((sum, m) => {
+                if (m.type === 'expense') return sum - m.amount;
+                if (m.type === 'income') return sum + m.amount;
+                return sum;
+            }, 0);
+
+            container.innerHTML = `
+                <div style="margin-bottom: 16px; padding: 16px; background: var(--gray-50); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="font-size: 15px;">Total movimientos mostrados:</strong> 
+                        <span style="font-size: 18px; font-weight: 700; color: var(--primary);">${filtered.length}</span>
+                    </div>
+                    <div>
+                        <strong style="font-size: 15px;">Balance total:</strong> 
+                        <span style="font-size: 22px; font-weight: 700; color: ${total >= 0 ? '#1E7E34' : '#C0392B'};">
+                            ${total >= 0 ? '+' : ''}${total.toFixed(2)} €
+                        </span>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cuenta</th>
+                                <th>Tipo</th>
+                                <th>Categoría</th>
+                                <th>Subcategoría</th>
+                                <th>Descripción</th>
+                                <th style="text-align: right;">Importe (€)</th>
+                                <th>Método</th>
+                                <th>Persona</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function showAddMovementModal() {
+            document.getElementById('movement-modal-title').textContent = 'Nuevo movimiento';
+            document.getElementById('movement-form').reset();
+            document.getElementById('movement-id').value = '';
+            document.getElementById('movement-date').value = new Date().toISOString().split('T')[0];
+            
+            // Populate selects
+            populateAccountSelects();
+            populateCategorySelect();
+            
+            // Show templates
+            showQuickTemplates();
+            
+            updateMovementTypeFields();
+            document.getElementById('movement-modal').classList.add('show');
+        }
+
+        function showQuickTemplates() {
+            const container = document.getElementById('templates-buttons');
+            const templatesDiv = document.getElementById('templates-quick');
+            
+            const favorites = state.templates.filter(t => t.favorite);
+            
+            if (favorites.length === 0) {
+                templatesDiv.style.display = 'none';
+                return;
+            }
+            
+            templatesDiv.style.display = 'block';
+            
+            container.innerHTML = favorites.map(tpl => `
+                <button type="button" class="btn btn-sm" style="background: var(--warning); color: white;" 
+                        onclick="applyTemplate('${tpl.id}')">
+                    ${tpl.name}
+                </button>
+            `).join('');
+        }
+
+        function handleDescriptionInput(value) {
+            // Populate autocomplete suggestions
+            const datalist = document.getElementById('description-suggestions');
+            const suggestions = getDescriptionSuggestions(value);
+            
+            datalist.innerHTML = suggestions.map(desc => 
+                `<option value="${desc}"></option>`
+            ).join('');
+            
+            // Apply rules if enough text
+            if (value.length >= 3) {
+                const match = applyRulesToDescription(value);
+                if (match) {
+                    const categorySelect = document.getElementById('movement-category');
+                    if (categorySelect.querySelector(`option[value="${match.categoryId}"]`)) {
+                        categorySelect.value = match.categoryId;
+                    }
+                }
+            }
+        }
+
+        function duplicateMovement(id) {
+            const movement = state.movements.find(m => m.id === id);
+            if (!movement) return;
+
+            document.getElementById('movement-modal-title').textContent = 'Duplicar movimiento';
+            document.getElementById('movement-id').value = '';
+            document.getElementById('movement-type').value = movement.type;
+            document.getElementById('movement-date').value = new Date().toISOString().split('T')[0]; // Today's date
+            document.getElementById('movement-amount').value = movement.amount;
+            document.getElementById('movement-description').value = movement.description;
+            
+            populateAccountSelects();
+            populateCategorySelect();
+            
+            if (movement.type === 'transfer') {
+                document.getElementById('movement-from').value = movement.fromAccountId || '';
+                document.getElementById('movement-to').value = movement.toAccountId || '';
+            } else {
+                document.getElementById('movement-account').value = movement.accountId || '';
+            }
+            
+            document.getElementById('movement-category').value = movement.categoryId || '';
+            
+            updateMovementTypeFields();
+            document.getElementById('movement-modal').classList.add('show');
+        }
+
+        function editMovement(id) {
+            const movement = state.movements.find(m => m.id === id);
+            if (!movement) return;
+
+            document.getElementById('movement-modal-title').textContent = 'Editar movimiento';
+            document.getElementById('movement-id').value = movement.id;
+            document.getElementById('movement-type').value = movement.type;
+            document.getElementById('movement-date').value = movement.date;
+            document.getElementById('movement-amount').value = movement.amount;
+            document.getElementById('movement-description').value = movement.description;
+            
+            populateAccountSelects();
+            populateCategorySelect();
+            
+            if (movement.type === 'transfer') {
+                document.getElementById('movement-from').value = movement.fromAccountId || '';
+                document.getElementById('movement-to').value = movement.toAccountId || '';
+            } else {
+                document.getElementById('movement-account').value = movement.accountId || '';
+            }
+            
+            document.getElementById('movement-category').value = movement.categoryId || '';
+            
+            updateMovementTypeFields();
+            document.getElementById('movement-modal').classList.add('show');
+        }
+
+        function closeMovementModal() {
+            document.getElementById('movement-modal').classList.remove('show');
+        }
+
+        function updateMovementTypeFields() {
+            const type = document.getElementById('movement-type').value;
+            const accountField = document.getElementById('account-field');
+            const transferFields = document.getElementById('transfer-fields');
+            const accountSelect = document.getElementById('movement-account');
+            const fromSelect = document.getElementById('movement-from');
+            const toSelect = document.getElementById('movement-to');
+
+            if (type === 'transfer') {
+                accountField.style.display = 'none';
+                transferFields.style.display = 'block';
+                accountSelect.removeAttribute('required');
+                fromSelect.setAttribute('required', 'required');
+                toSelect.setAttribute('required', 'required');
+            } else {
+                accountField.style.display = 'block';
+                transferFields.style.display = 'none';
+                accountSelect.setAttribute('required', 'required');
+                fromSelect.removeAttribute('required');
+                toSelect.removeAttribute('required');
+            }
+
+            // Re-populate accounts to ensure all selects have options
+            populateAccountSelects();
+        }
+
+        function populateAccountSelects() {
+            const selects = [
+                document.getElementById('movement-account'),
+                document.getElementById('movement-from'),
+                document.getElementById('movement-to')
+            ];
+
+            selects.forEach(select => {
+                if (!select) return; // Skip if element doesn't exist
+                
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Seleccionar cuenta...</option>';
+                
+                state.accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = account.name;
+                    select.appendChild(option);
+                });
+
+                // Restore previous value if it existed
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        function populateCategorySelect() {
+            const select = document.getElementById('movement-category');
+            const currentValue = select.value;
+            
+            select.innerHTML = '<option value="">Sin categorizar</option>';
+            
+            state.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                select.appendChild(option);
+            });
+
+            if (currentValue) select.value = currentValue;
+        }
+
+        function saveMovement(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('movement-id').value;
+            const type = document.getElementById('movement-type').value;
+            const date = document.getElementById('movement-date').value;
+            const amount = parseFloat(document.getElementById('movement-amount').value);
+            const description = document.getElementById('movement-description').value;
+            const categoryId = document.getElementById('movement-category').value || 'sin-categorizar';
+
+            let accountId = null;
+            let fromAccountId = null;
+            let toAccountId = null;
+
+            if (type === 'transfer') {
+                fromAccountId = document.getElementById('movement-from').value;
+                toAccountId = document.getElementById('movement-to').value;
+                
+                if (!fromAccountId || !toAccountId) {
+                    alert('Selecciona ambas cuentas para la transferencia');
+                    return;
+                }
+                if (fromAccountId === toAccountId) {
+                    alert('Las cuentas origen y destino deben ser diferentes');
+                    return;
+                }
+            } else {
+                accountId = document.getElementById('movement-account').value;
+                if (!accountId) {
+                    alert('Selecciona una cuenta');
+                    return;
+                }
+            }
+
+            const movement = {
+                id: id || `mov-${Date.now()}`,
+                type,
+                date,
+                amount,
+                description,
+                accountId,
+                categoryId,
+                fromAccountId,
+                toAccountId,
+                notes: '',
+                createdAt: id ? (state.movements.find(m => m.id === id)?.createdAt || new Date().toISOString()) : new Date().toISOString()
+            };
+
+            if (id) {
+                // Edit existing
+                const index = state.movements.findIndex(m => m.id === id);
+                if (index !== -1) {
+                    state.movements[index] = movement;
+                }
+            } else {
+                // Add new
+                state.movements.push(movement);
+            }
+
+            saveState(state);
+            closeMovementModal();
+            renderMovementsTable();
+        }
+
+        function deleteMovement(id) {
+            if (!confirm('¿Estás seguro de eliminar este movimiento?')) return;
+
+            state.movements = state.movements.filter(m => m.id !== id);
+            saveState(state);
+            renderMovementsTable();
+        }
+
+        // ============================================================================
+        // EXCEL IMPORT
+        // ============================================================================
+
+        function log(message, isError = false) {
+            const logContent = document.getElementById('import-log-content');
+            const logDiv = document.getElementById('import-log');
+            
+            if (logDiv) logDiv.style.display = 'block';
+            if (logContent) {
+                const line = document.createElement('div');
+                line.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+                if (isError) line.style.color = 'var(--danger)';
+                else if (message.includes('✅')) line.style.color = 'var(--success)';
+                logContent.appendChild(line);
+                logContent.scrollTop = logContent.scrollHeight;
+            }
+            console.log(message);
+        }
+
+        function handleExcelImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Clear previous logs
+            const logContent = document.getElementById('import-log-content');
+            if (logContent) logContent.innerHTML = '';
+            document.getElementById('import-summary').style.display = 'none';
+
+            log(`📁 Archivo seleccionado: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+
+            const reader = new FileReader();
+            reader.onerror = () => log('❌ Error al leer archivo', true);
+            
+            reader.onload = (e) => {
+                try {
+                    log('📖 Leyendo archivo...');
+                    
+                    if (typeof XLSX === 'undefined') {
+                        throw new Error('Librería XLSX no cargada');
+                    }
+
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    log(`📑 Hojas encontradas: ${workbook.SheetNames.join(', ')}`);
+
+                    // Import categories first
+                    const categoriesResult = importCategoriesFromExcel(workbook);
+                    
+                    // Import movements
+                    const movementsResult = importMovementsFromExcel(workbook);
+
+                    // Show summary
+                    showImportSummary(categoriesResult, movementsResult);
+
+                    // Save state
+                    saveState(state);
+                    
+                    // Refresh views
+                    renderMovementsTable();
+                    updateSettingsInfo();
+
+                } catch (error) {
+                    log(`❌ ERROR: ${error.message}`, true);
+                    console.error(error);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function importCategoriesFromExcel(workbook) {
+            const sheetName = workbook.SheetNames.find(s => 
+                normalizeText(s).includes('categoria') || normalizeText(s).includes('categorias')
+            );
+
+            if (!sheetName) {
+                log('⚠️ No se encontró hoja "Categorías", usando categorías por defecto');
+                return { imported: 0, created: 0, existing: 0 };
+            }
+
+            log(`🏷️ Procesando hoja "${sheetName}"...`);
+
+            const sheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            if (data.length < 2) {
+                log('⚠️ Hoja de categorías vacía');
+                return { imported: 0, created: 0, existing: 0 };
+            }
+
+            const headers = data[0].map(h => String(h).trim());
+            log(`📋 Columnas: ${headers.join(', ')}`);
+
+            // Find column indices
+            const categoryIdx = headers.findIndex(h => normalizeText(h).includes('categoria') && !normalizeText(h).includes('sub'));
+            const subcategoryIdx = headers.findIndex(h => normalizeText(h).includes('sub'));
+            const typeIdx = headers.findIndex(h => normalizeText(h).includes('tipo'));
+
+            if (categoryIdx === -1) {
+                log('❌ No se encontró columna "Categoría"', true);
+                return { imported: 0, created: 0, existing: 0 };
+            }
+
+            let imported = 0;
+            let created = 0;
+            let existing = 0;
+
+            // Process rows
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+
+                const categoryName = String(row[categoryIdx] || '').trim();
+                if (!categoryName) continue;
+
+                const subcategoryName = subcategoryIdx !== -1 ? String(row[subcategoryIdx] || '').trim() : '';
+                const typeName = typeIdx !== -1 ? String(row[typeIdx] || '').trim() : '';
+
+                // Determine type
+                let type = 'expense'; // default
+                if (normalizeText(typeName).includes('ingreso')) type = 'income';
+                else if (normalizeText(typeName).includes('transferencia')) type = 'transfer';
+
+                // Check if category exists
+                const categoryId = `cat-${normalizeText(categoryName).replace(/\s+/g, '-')}`;
+                let category = state.categories.find(c => c.id === categoryId);
+
+                if (!category) {
+                    // Create new category
+                    category = {
+                        id: categoryId,
+                        name: categoryName,
+                        type: type,
+                        parent: null,
+                        needsReview: false,
+                        subcategories: []
+                    };
+                    state.categories.push(category);
+                    created++;
+                    log(`  ➕ Categoría creada: ${categoryName}`);
+                } else {
+                    existing++;
+                }
+
+                // Handle subcategory
+                if (subcategoryName) {
+                    const subcategoryId = `subcat-${normalizeText(categoryName + '-' + subcategoryName).replace(/\s+/g, '-')}`;
+                    
+                    if (!category.subcategories) category.subcategories = [];
+                    
+                    const subcategoryExists = category.subcategories.find(s => s.id === subcategoryId);
+                    
+                    if (!subcategoryExists) {
+                        category.subcategories.push({
+                            id: subcategoryId,
+                            name: subcategoryName,
+                            needsReview: false
+                        });
+                        log(`    ➕ Subcategoría: ${categoryName} > ${subcategoryName}`);
+                    }
+                }
+
+                imported++;
+            }
+
+            log(`✅ Categorías procesadas: ${imported} (${created} nuevas, ${existing} existentes)`);
+            return { imported, created, existing };
+        }
+
+        function importMovementsFromExcel(workbook) {
+            const sheetName = workbook.SheetNames.find(s => 
+                normalizeText(s).includes('movimiento') || normalizeText(s).includes('movimientos')
+            );
+
+            if (!sheetName) {
+                // Try first sheet if no "Movimientos" found
+                if (workbook.SheetNames.length > 0) {
+                    const firstSheet = workbook.SheetNames[0];
+                    log(`⚠️ No se encontró hoja "Movimientos", usando "${firstSheet}"`);
+                    return importMovementsFromSheet(workbook, firstSheet);
+                }
+                log('⚠️ No se encontró hoja "Movimientos"');
+                return { imported: 0, duplicates: 0, errors: 0 };
+            }
+
+            log(`📋 Procesando hoja "${sheetName}"...`);
+            return importMovementsFromSheet(workbook, sheetName);
+        }
+
+        function importMovementsFromSheet(workbook, sheetName) {
+            const sheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            if (data.length < 2) {
+                log('⚠️ Hoja de movimientos vacía');
+                return { imported: 0, duplicates: 0, errors: 0 };
+            }
+
+            // Detect header row (might be in row 0, 1, or 2)
+            let headerRowIndex = 0;
+            let headers = data[0].map(h => String(h).trim());
+            
+            // Check if first row looks like a title (long text, account number, etc)
+            const firstRowText = headers.join(' ').toLowerCase();
+            if (firstRowText.length > 100 || 
+                firstRowText.includes('cuenta') || 
+                firstRowText.includes('movimientos de') ||
+                headers.filter(h => h).length < 3) {
+                
+                log('⚠️ Primera fila parece título, buscando headers...');
+                
+                // Search for header row in next rows
+                for (let i = 1; i < Math.min(5, data.length); i++) {
+                    const row = data[i].map(h => String(h).trim());
+                    const rowText = row.join('').toLowerCase();
+                    
+                    if (rowText.includes('fecha') || 
+                        rowText.includes('importe') || 
+                        (row.filter(r => r).length >= 3 && rowText.length < 100)) {
+                        headerRowIndex = i;
+                        headers = row;
+                        log(`✅ Headers encontrados en fila ${i + 1}`);
+                        break;
+                    }
+                }
+            }
+
+            log(`📋 Columnas: ${headers.filter(h => h).join(', ')}`);
+
+            // Find column indices (case insensitive, normalized)
+            const dateIdx = headers.findIndex(h => normalizeText(h).includes('fecha') && !normalizeText(h).includes('valor'));
+            const descIdx = headers.findIndex(h => 
+                normalizeText(h).includes('descripcion') || 
+                normalizeText(h).includes('concepto') || 
+                normalizeText(h).includes('movimiento') ||
+                normalizeText(h).includes('detalle')
+            );
+            const amountIdx = headers.findIndex(h => 
+                normalizeText(h).includes('importe') && !normalizeText(h).includes('saldo')
+            );
+            const typeIdx = headers.findIndex(h => normalizeText(h).includes('tipo'));
+            const categoryIdx = headers.findIndex(h => normalizeText(h).includes('categoria') && !normalizeText(h).includes('sub'));
+            const subcategoryIdx = headers.findIndex(h => normalizeText(h).includes('subcategoria'));
+            const accountIdx = headers.findIndex(h => normalizeText(h).includes('cuenta'));
+
+            // If columns not found by name, try to infer from position
+            if (dateIdx === -1 || descIdx === -1 || amountIdx === -1) {
+                log('⚠️ Intentando detectar columnas por posición...');
+                
+                // Common bank format: Date (0-1), Description (2), Amount (4)
+                const inferredDateIdx = dateIdx !== -1 ? dateIdx : 0;
+                const inferredDescIdx = descIdx !== -1 ? descIdx : 2;
+                const inferredAmountIdx = amountIdx !== -1 ? amountIdx : 4;
+                
+                return importMovementsByPosition(data, headerRowIndex + 1, inferredDateIdx, inferredDescIdx, inferredAmountIdx);
+            }
+
+            let imported = 0;
+            let duplicates = 0;
+            let errors = 0;
+
+            // Process rows (skip header row)
+            for (let i = headerRowIndex + 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+
+                try {
+                    // Parse date
+                    let date = parseExcelDate(row[dateIdx]);
+                    if (!date) {
+                        errors++;
+                        continue;
+                    }
+
+                    // Parse amount
+                    const amountStr = String(row[amountIdx] || '0').trim();
+                    const amount = parseAmount(amountStr);
+                    if (amount === 0) {
+                        errors++;
+                        continue;
+                    }
+
+                    // Parse description
+                    const description = String(row[descIdx] || '').trim();
+                    if (!description) {
+                        errors++;
+                        continue;
+                    }
+
+                    // Determine type
+                    let type = 'expense';
+                    if (typeIdx !== -1) {
+                        const typeStr = normalizeText(String(row[typeIdx] || ''));
+                        if (typeStr.includes('ingreso')) type = 'income';
+                        else if (typeStr.includes('transferencia')) type = 'transfer';
+                    } else {
+                        type = amount < 0 ? 'expense' : 'income';
+                    }
+
+                    // NO duplicate check - Import all movements as requested
+
+                    // Match category
+                    let categoryId = 'sin-categorizar';
+                    let subcategoryId = null;
+
+                    if (categoryIdx !== -1) {
+                        const categoryName = String(row[categoryIdx] || '').trim();
+                        const subcategoryName = subcategoryIdx !== -1 ? String(row[subcategoryIdx] || '').trim() : '';
+
+                        if (categoryName) {
+                            const matchedCategory = findOrCreateCategory(categoryName, subcategoryName, type);
+                            categoryId = matchedCategory.categoryId;
+                            subcategoryId = matchedCategory.subcategoryId;
+                        }
+                    }
+
+                    // Match account
+                    let accountId = 'cuenta-comun'; // default
+                    if (accountIdx !== -1) {
+                        const accountName = String(row[accountIdx] || '').trim();
+                        if (accountName) {
+                            const account = state.accounts.find(a => 
+                                normalizeText(a.name).includes(normalizeText(accountName))
+                            );
+                            if (account) accountId = account.id;
+                        }
+                    }
+
+                    // Create movement
+                    const movement = {
+                        id: `mov-${Date.now()}-${i}`,
+                        type: type,
+                        date: date,
+                        amount: Math.abs(amount),
+                        description: description,
+                        accountId: accountId,
+                        categoryId: categoryId,
+                        subcategoryId: subcategoryId,
+                        fromAccountId: null,
+                        toAccountId: null,
+                        notes: '',
+                        createdAt: new Date().toISOString(),
+                        importedFrom: 'excel'
+                    };
+
+                    state.movements.push(movement);
+                    imported++;
+
+                } catch (error) {
+                    errors++;
+                    console.error(`Error en fila ${i + 1}:`, error);
+                }
+            }
+
+            log(`✅ Movimientos importados: ${imported} (${errors} errores)`);
+            return { imported, duplicates: 0, errors };
+        }
+
+        function importMovementsByPosition(data, startRow, dateIdx, descIdx, amountIdx) {
+            // For bank format, we need specific columns:
+            // Column 1: Fecha valor (not column 0 which is Fecha)
+            // Column 2: Movimiento
+            // Column 4: Importe
+            
+            // Override indices based on known bank format
+            const FECHA_VALOR_IDX = 1;  // Fecha valor
+            const MOVIMIENTO_IDX = 2;   // Movimiento (description)
+            const IMPORTE_IDX = 4;      // Importe (amount)
+            
+            log(`📍 Usando columnas bancarias: Fecha valor=${FECHA_VALOR_IDX}, Movimiento=${MOVIMIENTO_IDX}, Importe=${IMPORTE_IDX}`);
+            
+            let imported = 0;
+            let skipped = 0;
+            let errors = 0;
+
+            for (let i = startRow; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+
+                try {
+                    // Use Fecha valor (column 1), not Fecha (column 0)
+                    const date = parseExcelDate(row[FECHA_VALOR_IDX]);
+                    
+                    // Use Movimiento column (2)
+                    const description = String(row[MOVIMIENTO_IDX] || '').trim();
+                    
+                    // Use Importe column (4)
+                    const amountStr = String(row[IMPORTE_IDX] || '0').trim();
+                    const amount = parseAmount(amountStr);
+
+                    if (!date || !description || amount === 0) {
+                        skipped++;
+                        continue;
+                    }
+
+                    // NO CHECK FOR DUPLICATES - Import all movements
+                    // User requested to import including duplicates
+
+                    // Determine type from amount sign
+                    const type = amount < 0 ? 'expense' : 'income';
+
+                    // Apply rules
+                    const ruleMatch = applyRulesToDescription(description);
+                    const categoryId = ruleMatch ? ruleMatch.categoryId : 'sin-categorizar';
+                    const subcategoryId = ruleMatch ? ruleMatch.subcategoryId : null;
+
+                    const movement = {
+                        id: `mov-${Date.now()}-${Math.random()}`,
+                        type: type,
+                        date: date,
+                        amount: Math.abs(amount),
+                        description: description,
+                        accountId: 'cuenta-comun',
+                        categoryId: categoryId,
+                        subcategoryId: subcategoryId,
+                        fromAccountId: null,
+                        toAccountId: null,
+                        notes: '',
+                        createdAt: new Date().toISOString(),
+                        importedFrom: 'excel'
+                    };
+
+                    state.movements.push(movement);
+                    imported++;
+
+                } catch (error) {
+                    errors++;
+                    console.error(`Error en fila ${i + 1}:`, error);
+                }
+            }
+
+            log(`✅ Movimientos importados: ${imported} (${skipped} filas vacías, ${errors} errores)`);
+            return { imported, duplicates: 0, errors };
+        }
+
+        function findOrCreateCategory(categoryName, subcategoryName, type) {
+            // Try to find existing category
+            const normalizedCat = normalizeText(categoryName);
+            let category = state.categories.find(c => 
+                normalizeText(c.name) === normalizedCat
+            );
+
+            let categoryId;
+            let subcategoryId = null;
+
+            if (category) {
+                categoryId = category.id;
+            } else {
+                // Create new category (mark for review)
+                categoryId = `cat-${normalizedCat.replace(/\s+/g, '-')}`;
+                category = {
+                    id: categoryId,
+                    name: categoryName,
+                    type: type,
+                    parent: null,
+                    needsReview: true,
+                    subcategories: []
+                };
+                state.categories.push(category);
+                log(`  ⚠️ Categoría nueva (revisar): ${categoryName}`);
+            }
+
+            // Handle subcategory
+            if (subcategoryName && category) {
+                const normalizedSubcat = normalizeText(subcategoryName);
+                if (!category.subcategories) category.subcategories = [];
+                
+                let subcategory = category.subcategories.find(s => 
+                    normalizeText(s.name) === normalizedSubcat
+                );
+
+                if (subcategory) {
+                    subcategoryId = subcategory.id;
+                } else {
+                    subcategoryId = `subcat-${normalizedCat}-${normalizedSubcat}`.replace(/\s+/g, '-');
+                    category.subcategories.push({
+                        id: subcategoryId,
+                        name: subcategoryName,
+                        needsReview: true
+                    });
+                    log(`    ⚠️ Subcategoría nueva (revisar): ${categoryName} > ${subcategoryName}`);
+                }
+            }
+
+            return { categoryId, subcategoryId };
+        }
+
+        function parseExcelDate(value) {
+            if (!value) return null;
+
+            // Excel serial number
+            const num = parseFloat(value);
+            if (!isNaN(num) && num > 40000 && num < 50000) {
+                const excelEpoch = new Date(1899, 11, 30);
+                const date = new Date(excelEpoch.getTime() + num * 86400000);
+                return date.toISOString().split('T')[0];
+            }
+
+            // String date DD/MM/YYYY or DD-MM-YYYY
+            const str = String(value).trim();
+            const parts = str.split(/[\/\-\.]/);
+            if (parts.length === 3) {
+                let day, month, year;
+                if (parts[2].length === 4) {
+                    day = parts[0].padStart(2, '0');
+                    month = parts[1].padStart(2, '0');
+                    year = parts[2];
+                } else if (parts[0].length === 4) {
+                    year = parts[0];
+                    month = parts[1].padStart(2, '0');
+                    day = parts[2].padStart(2, '0');
+                } else {
+                    day = parts[0].padStart(2, '0');
+                    month = parts[1].padStart(2, '0');
+                    year = '20' + parts[2];
+                }
+                return `${year}-${month}-${day}`;
+            }
+
+            return null;
+        }
+
+        function parseAmount(str) {
+            if (!str) return 0;
+            
+            let clean = String(str).replace(/[€$\s]/g, '');
+            
+            // Handle European format: 1.234,56
+            if (clean.includes(',') && clean.includes('.')) {
+                clean = clean.replace(/\./g, '').replace(',', '.');
+            } else if (clean.includes(',')) {
+                clean = clean.replace(',', '.');
+            }
+            
+            return parseFloat(clean) || 0;
+        }
+
+        function showImportSummary(categoriesResult, movementsResult) {
+            const summaryDiv = document.getElementById('import-summary');
+            summaryDiv.style.display = 'block';
+            
+            const needsReview = state.categories.filter(c => c.needsReview).length;
+            
+            summaryDiv.innerHTML = `
+                <div class="alert" style="background: #D4EDDA; border: 1px solid #C3E6CB; color: #155724;">
+                    <strong>✅ Importación completada</strong><br><br>
+                    <strong>Categorías:</strong><br>
+                    • ${categoriesResult.imported} procesadas (${categoriesResult.created} nuevas, ${categoriesResult.existing} existentes)<br><br>
+                    <strong>Movimientos:</strong><br>
+                    • ${movementsResult.imported} importados<br>
+                    • ${movementsResult.duplicates} duplicados omitidos<br>
+                    • ${movementsResult.errors} con errores<br><br>
+                    ${needsReview > 0 ? `<span style="color: var(--warning);">⚠️ ${needsReview} categorías necesitan revisión</span>` : ''}
+                </div>
+            `;
+        }
+
+        // ============================================================================
+        // CSV IMPORT
+        // ============================================================================
+
+        function logCSV(message, isError = false) {
+            const logContent = document.getElementById('csv-import-log-content');
+            const logDiv = document.getElementById('csv-import-log');
+            
+            if (logDiv) logDiv.style.display = 'block';
+            if (logContent) {
+                const line = document.createElement('div');
+                line.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+                if (isError) line.style.color = 'var(--danger)';
+                else if (message.includes('✅')) line.style.color = 'var(--success)';
+                logContent.appendChild(line);
+                logContent.scrollTop = logContent.scrollHeight;
+            }
+            console.log(message);
+        }
+
+        function handleCSVImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const accountId = document.getElementById('csv-default-account').value;
+            if (!accountId) {
+                alert('Por favor selecciona una cuenta destino');
+                return;
+            }
+
+            // Clear previous logs
+            const logContent = document.getElementById('csv-import-log-content');
+            if (logContent) logContent.innerHTML = '';
+            document.getElementById('csv-import-summary').style.display = 'none';
+
+            logCSV(`📁 Archivo seleccionado: ${file.name}`);
+
+            const reader = new FileReader();
+            reader.onerror = () => logCSV('❌ Error al leer archivo', true);
+            
+            reader.onload = (e) => {
+                try {
+                    const text = e.target.result;
+                    logCSV('📖 Parseando CSV...');
+
+                    const delimiter = text.includes(';') ? ';' : ',';
+                    logCSV(`🔧 Delimitador: "${delimiter}"`);
+
+                    const lines = text.split('\n').filter(l => l.trim());
+                    if (lines.length < 2) {
+                        throw new Error('CSV vacío o sin datos');
+                    }
+
+                    const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
+                    logCSV(`📋 Columnas: ${headers.join(', ')}`);
+
+                    // Find columns
+                    const dateIdx = headers.findIndex(h => normalizeText(h).includes('fecha'));
+                    const descIdx = headers.findIndex(h => 
+                        normalizeText(h).includes('descripcion') || 
+                        normalizeText(h).includes('concepto') ||
+                        normalizeText(h).includes('movimiento')
+                    );
+                    const amountIdx = headers.findIndex(h => 
+                        normalizeText(h).includes('importe') || 
+                        normalizeText(h).includes('cantidad')
+                    );
+
+                    if (dateIdx === -1 || descIdx === -1 || amountIdx === -1) {
+                        throw new Error('CSV debe tener columnas: Fecha, Descripción, Importe');
+                    }
+
+                    let imported = 0;
+                    let duplicates = 0;
+                    let errors = 0;
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split(delimiter).map(v => v.trim().replace(/"/g, ''));
+                        
+                        try {
+                            const date = parseExcelDate(values[dateIdx]);
+                            const description = values[descIdx];
+                            const amount = parseAmount(values[amountIdx]);
+
+                            if (!date || !description || amount === 0) {
+                                errors++;
+                                continue;
+                            }
+
+                            // Check duplicate
+                            const isDuplicate = state.movements.some(m => 
+                                m.date === date && 
+                                Math.abs(m.amount - Math.abs(amount)) < 0.01 && 
+                                normalizeText(m.description) === normalizeText(description)
+                            );
+
+                            if (isDuplicate) {
+                                duplicates++;
+                                continue;
+                            }
+
+                            const movement = {
+                                id: `mov-${Date.now()}-${i}`,
+                                type: amount < 0 ? 'expense' : 'income',
+                                date: date,
+                                amount: Math.abs(amount),
+                                description: description,
+                                accountId: accountId,
+                                categoryId: 'sin-categorizar',
+                                subcategoryId: null,
+                                fromAccountId: null,
+                                toAccountId: null,
+                                notes: '',
+                                createdAt: new Date().toISOString(),
+                                importedFrom: 'csv'
+                            };
+
+                            state.movements.push(movement);
+                            imported++;
+
+                        } catch (error) {
+                            errors++;
+                        }
+                    }
+
+                    logCSV(`✅ Importación completada: ${imported} movimientos (${duplicates} duplicados, ${errors} errores)`);
+
+                    // Save and refresh
+                    saveState(state);
+                    renderMovementsTable();
+                    updateSettingsInfo();
+
+                    // Show summary
+                    const summaryDiv = document.getElementById('csv-import-summary');
+                    summaryDiv.style.display = 'block';
+                    summaryDiv.innerHTML = `
+                        <div class="alert" style="background: #D4EDDA; border: 1px solid #C3E6CB; color: #155724;">
+                            <strong>✅ CSV importado</strong><br><br>
+                            • ${imported} movimientos importados<br>
+                            • ${duplicates} duplicados omitidos<br>
+                            • ${errors} con errores
+                        </div>
+                    `;
+
+                } catch (error) {
+                    logCSV(`❌ ERROR: ${error.message}`, true);
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        // ============================================================================
+        // CATEGORIES MANAGEMENT
+        // ============================================================================
+
+        let currentCategoryType = 'expense';
+
+        function switchCategoryTab(type) {
+            currentCategoryType = type;
+            
+            // Update tabs
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-type="${type}"]`).classList.add('active');
+            
+            // Clear search
+            document.getElementById('category-search').value = '';
+            
+            // Render list
+            renderCategoriesList();
+        }
+
+        function renderCategoriesList() {
+            const container = document.getElementById('categories-list-container');
+            const searchTerm = normalizeText(document.getElementById('category-search').value);
+            
+            // Check pending categories
+            checkPendingCategories();
+            
+            // Ensure default transfer subcategories exist
+            ensureTransferSubcategories();
+            
+            // Filter categories
+            let categories = state.categories.filter(c => c.type === currentCategoryType);
+            
+            if (searchTerm) {
+                categories = categories.filter(c => 
+                    normalizeText(c.name).includes(searchTerm)
+                );
+            }
+
+            if (categories.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🏷️</div>
+                        <div class="empty-state-title">No hay categorías</div>
+                        <div class="empty-state-text">${searchTerm ? 'No se encontraron categorías con ese nombre' : 'Añade tu primera categoría'}</div>
+                        ${!searchTerm ? '<button class="btn btn-primary" onclick="showAddCategoryModal()">+ Nueva categoría</button>' : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            const html = categories.map(category => {
+                const usageCount = state.movements.filter(m => m.categoryId === category.id).length;
+                const subcategoriesHtml = renderSubcategories(category);
+                
+                return `
+                    <div class="category-item">
+                        <div class="category-info">
+                            <div class="category-name">
+                                ${category.name}
+                                ${category.needsReview ? '<span class="needs-review-badge">REVISAR</span>' : ''}
+                            </div>
+                            <div class="category-usage">${usageCount} movimientos</div>
+                            ${subcategoriesHtml}
+                        </div>
+                        <div class="category-actions">
+                            <button class="btn btn-sm" style="background: var(--primary-light); color: white;" 
+                                    onclick="editCategory('${category.id}')">✏️</button>
+                            <button class="btn btn-sm btn-danger" 
+                                    onclick="confirmDeleteCategory('${category.id}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        function renderSubcategories(category) {
+            if (!category.subcategories || category.subcategories.length === 0) {
+                return '';
+            }
+
+            const subcatsHtml = category.subcategories.map(subcat => {
+                const usageCount = state.movements.filter(m => m.subcategoryId === subcat.id).length;
+                
+                return `
+                    <div class="subcategory-item">
+                        <span>
+                            ${subcat.name}
+                            ${subcat.needsReview ? '<span class="needs-review-badge">REVISAR</span>' : ''}
+                            <span style="color: var(--gray-600); font-size: 12px; margin-left: 8px;">${usageCount} mov.</span>
+                        </span>
+                        <button class="btn btn-sm btn-danger" 
+                                onclick="confirmDeleteSubcategory('${category.id}', '${subcat.id}')">🗑️</button>
+                    </div>
+                `;
+            }).join('');
+
+            return `<div class="subcategory-list">${subcatsHtml}</div>`;
+        }
+
+        function ensureTransferSubcategories() {
+            const transferCategory = state.categories.find(c => c.type === 'transfer');
+            
+            if (!transferCategory) {
+                // Create transfer category if doesn't exist
+                const category = {
+                    id: 'cat-transferencias',
+                    name: 'Transferencias',
+                    type: 'transfer',
+                    parent: null,
+                    needsReview: false,
+                    subcategories: []
+                };
+                state.categories.push(category);
+            }
+
+            const transferCat = state.categories.find(c => c.type === 'transfer');
+            if (!transferCat.subcategories) transferCat.subcategories = [];
+
+            const defaultSubs = [
+                { id: 'subcat-transfer-lucas', name: 'A Lucas' },
+                { id: 'subcat-transfer-ahorro', name: 'Ahorro Común' },
+                { id: 'subcat-transfer-comun', name: 'Traspaso a Cuenta Común' },
+                { id: 'subcat-transfer-personal', name: 'Traspaso a Cuenta Personal' }
+            ];
+
+            defaultSubs.forEach(defaultSub => {
+                const exists = transferCat.subcategories.find(s => s.id === defaultSub.id);
+                if (!exists) {
+                    transferCat.subcategories.push({
+                        ...defaultSub,
+                        needsReview: false
+                    });
+                }
+            });
+        }
+
+        function showAddCategoryModal() {
+            document.getElementById('category-modal-title').textContent = 'Nueva categoría';
+            document.getElementById('category-form').reset();
+            document.getElementById('category-id').value = '';
+            document.getElementById('category-type').value = currentCategoryType;
+            document.getElementById('subcategories-list').innerHTML = '';
+            document.getElementById('category-modal').classList.add('show');
+        }
+
+        function editCategory(categoryId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (!category) return;
+
+            document.getElementById('category-modal-title').textContent = 'Editar categoría';
+            document.getElementById('category-id').value = category.id;
+            document.getElementById('category-type').value = category.type;
+            document.getElementById('category-name').value = category.name;
+
+            // Populate subcategories
+            const sublist = document.getElementById('subcategories-list');
+            sublist.innerHTML = '';
+            if (category.subcategories && category.subcategories.length > 0) {
+                category.subcategories.forEach(subcat => {
+                    addSubcategoryField(subcat.name, subcat.id);
+                });
+            }
+
+            document.getElementById('category-modal').classList.add('show');
+        }
+
+        function addSubcategoryField(name = '', id = '') {
+            const sublist = document.getElementById('subcategories-list');
+            const index = sublist.children.length;
+            
+            const div = document.createElement('div');
+            div.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+            div.innerHTML = `
+                <input type="text" class="form-control" placeholder="Nombre subcategoría" 
+                       value="${name}" data-subcat-id="${id}">
+                <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+            `;
+            sublist.appendChild(div);
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('category-modal').classList.remove('show');
+        }
+
+        function saveCategory(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('category-id').value;
+            const type = document.getElementById('category-type').value;
+            const name = document.getElementById('category-name').value.trim();
+
+            if (!name) {
+                alert('El nombre de la categoría es requerido');
+                return;
+            }
+
+            // Collect subcategories
+            const subcategories = [];
+            const subInputs = document.querySelectorAll('#subcategories-list input');
+            subInputs.forEach(input => {
+                const subName = input.value.trim();
+                if (subName) {
+                    const existingId = input.dataset.subcatId;
+                    const subId = existingId || `subcat-${normalizeText(name + '-' + subName).replace(/\s+/g, '-')}`;
+                    subcategories.push({
+                        id: subId,
+                        name: subName,
+                        needsReview: false
+                    });
+                }
+            });
+
+            if (id) {
+                // Edit existing
+                const category = state.categories.find(c => c.id === id);
+                if (category) {
+                    category.name = name;
+                    category.subcategories = subcategories;
+                    category.needsReview = false;
+                }
+            } else {
+                // Create new
+                const categoryId = `cat-${normalizeText(name).replace(/\s+/g, '-')}-${Date.now()}`;
+                const category = {
+                    id: categoryId,
+                    name: name,
+                    type: type,
+                    parent: null,
+                    needsReview: false,
+                    subcategories: subcategories
+                };
+                state.categories.push(category);
+            }
+
+            saveState(state);
+            closeCategoryModal();
+            renderCategoriesList();
+            updateSettingsInfo();
+        }
+
+        function confirmDeleteCategory(categoryId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (!category) return;
+
+            const usageCount = state.movements.filter(m => m.categoryId === categoryId).length;
+
+            const modal = document.getElementById('delete-category-modal');
+            const content = document.getElementById('delete-category-content');
+            const footer = document.getElementById('delete-category-footer');
+
+            if (usageCount === 0) {
+                // Safe to delete
+                content.innerHTML = `
+                    <p>¿Estás seguro de eliminar la categoría <strong>${category.name}</strong>?</p>
+                    <p style="color: var(--gray-600); font-size: 14px;">Esta categoría no está en uso.</p>
+                `;
+                footer.innerHTML = `
+                    <button type="button" class="btn" style="background: var(--gray-600); color: white;" 
+                            onclick="closeDeleteCategoryModal()">Cancelar</button>
+                    <button type="button" class="btn btn-danger" 
+                            onclick="deleteCategory('${categoryId}')">Eliminar</button>
+                `;
+            } else {
+                // Need reassignment
+                const otherCategories = state.categories.filter(c => 
+                    c.id !== categoryId && 
+                    c.type === category.type &&
+                    c.id !== 'sin-categorizar'
+                );
+
+                const optionsHtml = otherCategories.map(c => 
+                    `<option value="${c.id}">${c.name}</option>`
+                ).join('');
+
+                content.innerHTML = `
+                    <p>La categoría <strong>${category.name}</strong> está en uso por <strong>${usageCount} movimientos</strong>.</p>
+                    <p style="color: var(--warning); margin-bottom: 16px;">Debes reasignar estos movimientos a otra categoría antes de eliminarla.</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Reasignar movimientos a:</label>
+                        <select class="form-control" id="reassign-category-select">
+                            <option value="">Seleccionar categoría...</option>
+                            <option value="sin-categorizar">Sin categorizar</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `;
+                footer.innerHTML = `
+                    <button type="button" class="btn" style="background: var(--gray-600); color: white;" 
+                            onclick="closeDeleteCategoryModal()">Cancelar</button>
+                    <button type="button" class="btn btn-danger" 
+                            onclick="deleteCategoryWithReassign('${categoryId}')">Reasignar y eliminar</button>
+                `;
+            }
+
+            modal.classList.add('show');
+        }
+
+        function closeDeleteCategoryModal() {
+            document.getElementById('delete-category-modal').classList.remove('show');
+        }
+
+        function deleteCategory(categoryId) {
+            state.categories = state.categories.filter(c => c.id !== categoryId);
+            saveState(state);
+            closeDeleteCategoryModal();
+            renderCategoriesList();
+            updateSettingsInfo();
+        }
+
+        function deleteCategoryWithReassign(categoryId) {
+            const newCategoryId = document.getElementById('reassign-category-select').value;
+            
+            if (!newCategoryId) {
+                alert('Por favor selecciona una categoría destino');
+                return;
+            }
+
+            // Reassign all movements
+            state.movements.forEach(mov => {
+                if (mov.categoryId === categoryId) {
+                    mov.categoryId = newCategoryId;
+                    mov.subcategoryId = null; // Clear subcategory
+                }
+            });
+
+            // Delete category
+            state.categories = state.categories.filter(c => c.id !== categoryId);
+            
+            saveState(state);
+            closeDeleteCategoryModal();
+            renderCategoriesList();
+            renderMovementsTable();
+            updateSettingsInfo();
+            
+            alert(`Movimientos reasignados correctamente. Categoría eliminada.`);
+        }
+
+        function confirmDeleteSubcategory(categoryId, subcategoryId) {
+            if (!confirm('¿Eliminar esta subcategoría? Los movimientos asociados mantendrán la categoría principal.')) {
+                return;
+            }
+
+            const category = state.categories.find(c => c.id === categoryId);
+            if (category && category.subcategories) {
+                category.subcategories = category.subcategories.filter(s => s.id !== subcategoryId);
+                
+                // Clear subcategory from movements
+                state.movements.forEach(mov => {
+                    if (mov.subcategoryId === subcategoryId) {
+                        mov.subcategoryId = null;
+                    }
+                });
+
+                saveState(state);
+                renderCategoriesList();
+                renderMovementsTable();
+            }
+        }
+
+        function checkPendingCategories() {
+            const pending = state.categories.filter(c => c.needsReview);
+            const alert = document.getElementById('categories-pending-alert');
+            const countSpan = document.getElementById('pending-count');
+            
+            if (pending.length > 0) {
+                alert.style.display = 'block';
+                countSpan.textContent = pending.length;
+            } else {
+                alert.style.display = 'none';
+            }
+        }
+
+        function showPendingModal() {
+            const pending = state.categories.filter(c => c.needsReview);
+            const list = document.getElementById('pending-categories-list');
+            
+            if (pending.length === 0) {
+                list.innerHTML = '<p style="color: var(--gray-600);">No hay categorías pendientes de revisión.</p>';
+            } else {
+                const html = pending.map(category => {
+                    const typeLabel = category.type === 'expense' ? '🔴 Gasto' : 
+                                     category.type === 'income' ? '💚 Ingreso' : '🔄 Transferencia';
+                    const usageCount = state.movements.filter(m => m.categoryId === category.id).length;
+                    
+                    return `
+                        <div style="padding: 16px; border: 1px solid var(--gray-200); border-radius: 8px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                <div>
+                                    <strong style="font-size: 15px;">${category.name}</strong>
+                                    <div style="font-size: 13px; color: var(--gray-600); margin-top: 4px;">
+                                        ${typeLabel} • ${usageCount} movimientos
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-success" onclick="approvePendingCategory('${category.id}')">
+                                        ✓ Confirmar
+                                    </button>
+                                    <button class="btn btn-sm" style="background: var(--primary-light); color: white;" 
+                                            onclick="editCategory('${category.id}'); closePendingModal()">
+                                        ✏️ Editar
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmDeleteCategory('${category.id}'); closePendingModal()">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                list.innerHTML = html;
+            }
+
+            document.getElementById('pending-modal').classList.add('show');
+        }
+
+        function closePendingModal() {
+            document.getElementById('pending-modal').classList.remove('show');
+            renderCategoriesList();
+        }
+
+        function approvePendingCategory(categoryId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (category) {
+                category.needsReview = false;
+                
+                // Also approve all subcategories
+                if (category.subcategories) {
+                    category.subcategories.forEach(s => s.needsReview = false);
+                }
+                
+                saveState(state);
+                showPendingModal(); // Refresh
+                updateSettingsInfo();
+            }
+        }
+
+        // ============================================================================
+        // SETTINGS
+        // ============================================================================
+
+        function updateSettingsInfo() {
+            document.getElementById('schema-version-display').textContent = state.schemaVersion;
+            document.getElementById('total-movements-display').textContent = state.movements.length;
+            document.getElementById('total-categories-display').textContent = state.categories.length;
+            
+            const categoriesPending = state.categories.filter(c => c.needsReview).length;
+            document.getElementById('categories-pending-display').textContent = categoriesPending;
+
+            // Populate CSV account selector
+            const csvAccountSelect = document.getElementById('csv-default-account');
+            if (csvAccountSelect) {
+                csvAccountSelect.innerHTML = '<option value="">Seleccionar cuenta...</option>';
+                state.accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = account.name;
+                    csvAccountSelect.appendChild(option);
+                });
+            }
+        }
+
+        function resetApp() {
+            if (!confirm('¿SEGURO que quieres borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
+            if (!confirm('Última confirmación: se borrarán todos los movimientos, categorías y configuración.')) return;
+
+            localStorage.removeItem('finanzas-familia-state');
+            state = loadState();
+            alert('Aplicación reseteada correctamente');
+            showView('dashboard');
+        }
+
+        // ============================================================================
+        // DASHBOARD WITH FILTERS, KPIS & CHARTS
+        // ============================================================================
+
+        let dashboardCharts = {
+            trend: null,
+            expenses: null,
+            income: null,
+            transfers: null
+        };
+
+        let dashboardFilters = {
+            dateRange: 'this-month',
+            dateFrom: null,
+            dateTo: null,
+            accounts: ['all'],
+            type: 'all',
+            category: 'all',
+            person: 'all',
+            search: '',
+            excludeTransfers: true
+        };
+
+        function populateDashboardFilters() {
+            // Populate accounts selector
+            const accountsSelect = document.getElementById('filter-accounts');
+            accountsSelect.innerHTML = '<option value="all">Todas las cuentas</option>';
+            state.accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = account.name;
+                accountsSelect.appendChild(option);
+            });
+
+            // Populate categories selector
+            const categorySelect = document.getElementById('filter-category');
+            categorySelect.innerHTML = '<option value="all">Todas</option>';
+            state.categories.forEach(cat => {
+                if (cat.id !== 'sin-categorizar') {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.name;
+                    categorySelect.appendChild(option);
+                }
+            });
+        }
+
+        function applyDashboardFilters() {
+            // Read filter values
+            dashboardFilters.dateRange = document.getElementById('filter-date-range').value;
+            dashboardFilters.type = document.getElementById('filter-type').value;
+            dashboardFilters.category = document.getElementById('filter-category').value;
+            dashboardFilters.person = document.getElementById('filter-person').value;
+            dashboardFilters.search = document.getElementById('filter-search').value;
+            dashboardFilters.excludeTransfers = document.getElementById('filter-exclude-transfers').checked;
+
+            // Handle custom dates
+            if (dashboardFilters.dateRange === 'custom') {
+                document.getElementById('custom-dates').style.display = 'block';
+                document.getElementById('custom-dates-to').style.display = 'block';
+                dashboardFilters.dateFrom = document.getElementById('filter-date-from').value;
+                dashboardFilters.dateTo = document.getElementById('filter-date-to').value;
+            } else {
+                document.getElementById('custom-dates').style.display = 'none';
+                document.getElementById('custom-dates-to').style.display = 'none';
+            }
+
+            // Get accounts (multi-select)
+            const accountsSelect = document.getElementById('filter-accounts');
+            const selectedAccounts = Array.from(accountsSelect.selectedOptions).map(opt => opt.value);
+            dashboardFilters.accounts = selectedAccounts.length > 0 ? selectedAccounts : ['all'];
+
+            // Render dashboard
+            renderDashboard();
+        }
+
+        function resetDashboardFilters() {
+            document.getElementById('filter-date-range').value = 'this-month';
+            document.getElementById('filter-type').value = 'all';
+            document.getElementById('filter-category').value = 'all';
+            document.getElementById('filter-person').value = 'all';
+            document.getElementById('filter-search').value = '';
+            document.getElementById('filter-exclude-transfers').checked = true;
+            
+            const accountsSelect = document.getElementById('filter-accounts');
+            accountsSelect.selectedIndex = 0;
+            
+            applyDashboardFilters();
+        }
+
+        function getDateRange() {
+            const now = new Date();
+            let from, to;
+
+            switch (dashboardFilters.dateRange) {
+                case 'this-month':
+                    from = new Date(now.getFullYear(), now.getMonth(), 1);
+                    to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    break;
+                case 'last-month':
+                    from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    to = new Date(now.getFullYear(), now.getMonth(), 0);
+                    break;
+                case 'this-quarter':
+                    const quarter = Math.floor(now.getMonth() / 3);
+                    from = new Date(now.getFullYear(), quarter * 3, 1);
+                    to = new Date(now.getFullYear(), quarter * 3 + 3, 0);
+                    break;
+                case 'this-year':
+                    from = new Date(now.getFullYear(), 0, 1);
+                    to = new Date(now.getFullYear(), 11, 31);
+                    break;
+                case 'last-year':
+                    from = new Date(now.getFullYear() - 1, 0, 1);
+                    to = new Date(now.getFullYear() - 1, 11, 31);
+                    break;
+                case 'last-30':
+                    from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    to = now;
+                    break;
+                case 'last-90':
+                    from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                    to = now;
+                    break;
+                case 'custom':
+                    from = dashboardFilters.dateFrom ? new Date(dashboardFilters.dateFrom) : new Date(2000, 0, 1);
+                    to = dashboardFilters.dateTo ? new Date(dashboardFilters.dateTo) : now;
+                    break;
+                case 'all':
+                default:
+                    from = new Date(2000, 0, 1);
+                    to = new Date(2100, 11, 31);
+            }
+
+            return { from, to };
+        }
+
+        function getFilteredMovements() {
+            const { from, to } = getDateRange();
+            const searchTerm = normalizeText(dashboardFilters.search);
+
+            return state.movements.filter(mov => {
+                // Date range
+                const movDate = new Date(mov.date);
+                if (movDate < from || movDate > to) return false;
+
+                // Accounts
+                if (!dashboardFilters.accounts.includes('all')) {
+                    const movAccount = mov.accountId || mov.fromAccountId || mov.toAccountId;
+                    if (!dashboardFilters.accounts.includes(movAccount)) return false;
+                }
+
+                // Type
+                if (dashboardFilters.type !== 'all' && mov.type !== dashboardFilters.type) return false;
+
+                // Category
+                if (dashboardFilters.category !== 'all' && mov.categoryId !== dashboardFilters.category) return false;
+
+                // Person (by account)
+                if (dashboardFilters.person !== 'all') {
+                    const account = state.accounts.find(a => 
+                        a.id === mov.accountId || a.id === mov.fromAccountId || a.id === mov.toAccountId
+                    );
+                    if (!account || !account.users.includes(dashboardFilters.person)) {
+                        if (dashboardFilters.person !== 'Familia' || account?.type !== 'shared') return false;
+                    }
+                }
+
+                // Search
+                if (searchTerm && !normalizeText(mov.description).includes(searchTerm)) return false;
+
+                return true;
+            });
+        }
+
+        function renderDashboard() {
+            const filtered = getFilteredMovements();
+
+            // Calculate KPIs
+            const income = filtered.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
+            const incomeCount = filtered.filter(m => m.type === 'income').length;
+            
+            const expenses = filtered.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
+            const expensesCount = filtered.filter(m => m.type === 'expense').length;
+            
+            const transfers = filtered.filter(m => m.type === 'transfer').reduce((s, m) => s + m.amount, 0);
+            const transfersCount = filtered.filter(m => m.type === 'transfer').length;
+            
+            const balance = dashboardFilters.excludeTransfers ? (income - expenses) : (income - expenses - transfers);
+            const savings = income > 0 ? ((balance / income) * 100) : 0;
+
+            // Update KPIs
+            document.getElementById('kpi-income').textContent = income.toFixed(2) + ' €';
+            document.getElementById('kpi-income-count').textContent = incomeCount + ' movimientos';
+            
+            document.getElementById('kpi-expenses').textContent = expenses.toFixed(2) + ' €';
+            document.getElementById('kpi-expenses-count').textContent = expensesCount + ' movimientos';
+            
+            document.getElementById('kpi-balance').textContent = balance.toFixed(2) + ' €';
+            document.getElementById('kpi-savings').textContent = savings.toFixed(1) + '% ahorro';
+            
+            document.getElementById('kpi-transfers').textContent = transfers.toFixed(2) + ' €';
+            document.getElementById('kpi-transfers-count').textContent = transfersCount + ' movimientos';
+
+            // Render charts
+            renderTrendChart(filtered);
+            renderExpensesChart(filtered);
+            renderIncomeChart(filtered);
+            renderTransfersChart(filtered);
+
+            // Render tables
+            renderMonthlySummaryTable();
+            renderExpensesByCategoryTable(filtered);
+            renderDashboardMovementsTable(filtered);
+        }
+
+        function renderTrendChart(movements) {
+            const canvas = document.getElementById('chart-trend');
+            if (!canvas) return;
+
+            // Group by month
+            const monthlyData = {};
+            movements.forEach(mov => {
+                const month = mov.date.substring(0, 7); // YYYY-MM
+                if (!monthlyData[month]) {
+                    monthlyData[month] = { income: 0, expenses: 0 };
+                }
+                if (mov.type === 'income') monthlyData[month].income += mov.amount;
+                if (mov.type === 'expense') monthlyData[month].expenses += mov.amount;
+            });
+
+            const months = Object.keys(monthlyData).sort();
+            const incomeData = months.map(m => monthlyData[m].income);
+            const expensesData = months.map(m => monthlyData[m].expenses);
+
+            // Destroy previous chart
+            if (dashboardCharts.trend) {
+                dashboardCharts.trend.destroy();
+            }
+
+            dashboardCharts.trend = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: months.map(m => {
+                        const [year, month] = m.split('-');
+                        return `${month}/${year.substring(2)}`;
+                    }),
+                    datasets: [
+                        {
+                            label: 'Ingresos',
+                            data: incomeData,
+                            borderColor: '#27AE60',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Gastos',
+                            data: expensesData,
+                            borderColor: '#E74C3C',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: true, position: 'bottom' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function renderExpensesChart(movements) {
+            const canvas = document.getElementById('chart-expenses');
+            if (!canvas) return;
+
+            const expenseMovements = movements.filter(m => m.type === 'expense');
+            const categoryTotals = {};
+
+            expenseMovements.forEach(mov => {
+                const category = state.categories.find(c => c.id === mov.categoryId);
+                const name = category ? category.name : 'Sin categoría';
+                categoryTotals[name] = (categoryTotals[name] || 0) + mov.amount;
+            });
+
+            const labels = Object.keys(categoryTotals);
+            const data = Object.values(categoryTotals);
+
+            if (dashboardCharts.expenses) {
+                dashboardCharts.expenses.destroy();
+            }
+
+            dashboardCharts.expenses = new Chart(canvas, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#E74C3C', '#3498DB', '#F39C12', '#9B59B6', '#1ABC9C',
+                            '#E67E22', '#95A5A6', '#34495E', '#16A085', '#D35400'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: true, position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        function renderIncomeChart(movements) {
+            const canvas = document.getElementById('chart-income');
+            if (!canvas) return;
+
+            const incomeMovements = movements.filter(m => m.type === 'income');
+            const categoryTotals = {};
+
+            incomeMovements.forEach(mov => {
+                const category = state.categories.find(c => c.id === mov.categoryId);
+                const name = category ? category.name : 'Sin categoría';
+                categoryTotals[name] = (categoryTotals[name] || 0) + mov.amount;
+            });
+
+            const labels = Object.keys(categoryTotals);
+            const data = Object.values(categoryTotals);
+
+            if (dashboardCharts.income) {
+                dashboardCharts.income.destroy();
+            }
+
+            dashboardCharts.income = new Chart(canvas, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#27AE60', '#16A085', '#2ECC71', '#1ABC9C', '#52BE80',
+                            '#48C9B0', '#7DCEA0', '#76D7C4', '#A3E4D7', '#A9DFBF'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: true, position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        function renderTransfersChart(movements) {
+            const canvas = document.getElementById('chart-transfers');
+            if (!canvas) return;
+
+            const transferMovements = movements.filter(m => m.type === 'transfer');
+            const subcategoryTotals = {};
+
+            transferMovements.forEach(mov => {
+                const category = state.categories.find(c => c.id === mov.categoryId);
+                let name = 'Otras transferencias';
+                
+                if (category && mov.subcategoryId) {
+                    const subcat = category.subcategories?.find(s => s.id === mov.subcategoryId);
+                    if (subcat) name = subcat.name;
+                }
+                
+                subcategoryTotals[name] = (subcategoryTotals[name] || 0) + mov.amount;
+            });
+
+            const labels = Object.keys(subcategoryTotals);
+            const data = Object.values(subcategoryTotals);
+
+            if (dashboardCharts.transfers) {
+                dashboardCharts.transfers.destroy();
+            }
+
+            dashboardCharts.transfers = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Importe',
+                        data: data,
+                        backgroundColor: '#9B59B6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function renderDashboardMovements(movements) {
+            // This function is replaced by renderDashboardMovementsTable
+            renderDashboardMovementsTable(movements);
+        }
+
+        let currentMovementsView = 'all';
+
+        function switchMovementsView(view) {
+            currentMovementsView = view;
+            
+            // Update tab styles
+            ['all', 'income', 'expense', 'transfer'].forEach(v => {
+                const tab = document.getElementById(`tab-${v}`);
+                if (v === view) {
+                    tab.style.background = 'var(--primary)';
+                    tab.style.color = 'white';
+                    tab.style.fontWeight = '700';
+                } else {
+                    tab.style.background = 'var(--gray-100)';
+                    tab.style.color = 'var(--gray-900)';
+                    tab.style.fontWeight = '400';
+                }
+            });
+
+            // Re-render table
+            const filtered = getFilteredMovements();
+            renderDashboardMovementsTable(filtered);
+        }
+
+        function renderDashboardMovementsTable(movements) {
+            const container = document.getElementById('dashboard-movements-table');
+            
+            // Filter by current view
+            let viewFiltered = movements;
+            if (currentMovementsView !== 'all') {
+                viewFiltered = movements.filter(m => m.type === currentMovementsView);
+            }
+
+            if (viewFiltered.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-text">No hay movimientos de este tipo con los filtros aplicados</div></div>';
+                return;
+            }
+
+            // Sort by date descending
+            const sorted = viewFiltered.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const rows = sorted.map(mov => {
+                const account = state.accounts.find(a => a.id === mov.accountId || a.id === mov.fromAccountId);
+                const category = state.categories.find(c => c.id === mov.categoryId);
+                
+                // Get subcategory name
+                let subcategoryName = '';
+                if (mov.subcategoryId && category && category.subcategories) {
+                    const subcat = category.subcategories.find(s => s.id === mov.subcategoryId);
+                    if (subcat) subcategoryName = subcat.name;
+                }
+                
+                let typeLabel, typeBadge;
+                if (mov.type === 'income') {
+                    typeLabel = 'Ingreso';
+                    typeBadge = 'badge-success';
+                } else if (mov.type === 'expense') {
+                    typeLabel = 'Gasto';
+                    typeBadge = 'badge-danger';
+                } else {
+                    typeLabel = 'Transferencia';
+                    typeBadge = 'badge-info';
+                }
+
+                // Determine person from account
+                let person = '';
+                if (account) {
+                    if (account.users.length > 1) {
+                        person = 'Familia';
+                    } else if (account.users.includes('Oriol')) {
+                        person = 'Oriol';
+                    } else if (account.users.includes('Paula')) {
+                        person = 'Paula';
+                    } else if (account.users.includes('Lucas')) {
+                        person = 'Lucas';
+                    }
+                }
+
+                // Payment method - infer from type
+                let method = '-';
+                if (mov.type === 'transfer') {
+                    method = 'Transferencia bancaria';
+                } else if (mov.type === 'income') {
+                    method = 'Transferencia bancaria';
+                } else {
+                    method = 'Tarjeta débito';
+                }
+
+                return `
+                    <tr>
+                        <td style="white-space: nowrap; font-size: 13px;">${mov.date}</td>
+                        <td style="font-size: 13px;">${account ? account.name : 'N/A'}</td>
+                        <td><span class="badge ${typeBadge}">${typeLabel}</span></td>
+                        <td><strong>${category ? category.name : 'Sin categoría'}</strong></td>
+                        <td style="font-size: 13px;">${subcategoryName || '-'}</td>
+                        <td><strong>${mov.description}</strong></td>
+                        <td style="text-align: right; font-weight: 700; color: ${mov.type === 'expense' ? '#C0392B' : mov.type === 'income' ? '#1E7E34' : '#8E44AD'}; white-space: nowrap;">
+                            ${mov.amount.toFixed(2)} €
+                        </td>
+                        <td style="font-size: 12px; color: var(--gray-600);">${method}</td>
+                        <td style="font-size: 13px;">${person}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <div style="margin-bottom: 12px; padding: 12px; background: var(--gray-50); border-radius: 8px; font-size: 14px;">
+                    <strong>Total movimientos mostrados:</strong> ${viewFiltered.length} | 
+                    <strong>Total:</strong> <span style="color: ${sorted.reduce((s, m) => s + m.amount, 0) >= 0 ? '#1E7E34' : '#C0392B'}; font-weight: 700;">
+                        ${sorted.reduce((s, m) => s + (m.type === 'expense' ? -m.amount : m.amount), 0).toFixed(2)} €
+                    </span>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cuenta</th>
+                                <th>Tipo</th>
+                                <th>Categoría</th>
+                                <th>Subcategoría</th>
+                                <th>Descripción</th>
+                                <th style="text-align: right;">Importe (€)</th>
+                                <th>Método</th>
+                                <th>Persona</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderMonthlySummaryTable() {
+            const container = document.getElementById('monthly-summary-table');
+            
+            // Get year from filters or current year
+            const now = new Date();
+            const currentYear = dashboardFilters.dateRange === 'all' ? now.getFullYear() : 
+                               (dashboardFilters.dateFrom ? new Date(dashboardFilters.dateFrom).getFullYear() : now.getFullYear());
+
+            const months = [
+                'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+            ];
+
+            let totalIncome = 0;
+            let totalExpenses = 0;
+
+            const rows = months.map((monthName, index) => {
+                const monthNumber = index + 1;
+                
+                // Filter movements for this month and year
+                const monthMovements = state.movements.filter(m => {
+                    const movDate = new Date(m.date);
+                    return movDate.getFullYear() === currentYear && movDate.getMonth() === index;
+                });
+
+                const income = monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
+                const expenses = monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
+                const balance = income - expenses;
+                const savingsPercent = income > 0 ? ((balance / income) * 100) : 0;
+
+                totalIncome += income;
+                totalExpenses += expenses;
+
+                const balanceColor = balance >= 0 ? '#1E7E34' : '#C0392B';
+                const savingsColor = savingsPercent >= 20 ? '#1E7E34' : savingsPercent >= 10 ? '#D35400' : '#C0392B';
+
+                return `
+                    <tr>
+                        <td><strong>${monthName}</strong></td>
+                        <td style="text-align: right; color: #1E7E34; font-weight: 600;">+${income.toFixed(2)} €</td>
+                        <td style="text-align: right; color: #C0392B; font-weight: 600;">-${expenses.toFixed(2)} €</td>
+                        <td style="text-align: right; font-weight: 700; color: ${balanceColor};">${balance.toFixed(2)} €</td>
+                        <td style="text-align: right; font-weight: 600; color: ${savingsColor};">${savingsPercent.toFixed(1)}%</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const totalBalance = totalIncome - totalExpenses;
+            const totalSavings = totalIncome > 0 ? ((totalBalance / totalIncome) * 100) : 0;
+            const totalBalanceColor = totalBalance >= 0 ? '#1E7E34' : '#C0392B';
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mes</th>
+                                <th style="text-align: right;">💚 Ingresos</th>
+                                <th style="text-align: right;">🔴 Gastos</th>
+                                <th style="text-align: right;">⚖️ Balance</th>
+                                <th style="text-align: right;">💰 % Ahorro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                            <tr style="background: var(--gray-100); font-weight: 700;">
+                                <td><strong>TOTAL ${currentYear}</strong></td>
+                                <td style="text-align: right; color: #1E7E34;">+${totalIncome.toFixed(2)} €</td>
+                                <td style="text-align: right; color: #C0392B;">-${totalExpenses.toFixed(2)} €</td>
+                                <td style="text-align: right; color: ${totalBalanceColor};">${totalBalance.toFixed(2)} €</td>
+                                <td style="text-align: right;">${totalSavings.toFixed(1)}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderExpensesByCategoryTable(filtered) {
+            const container = document.getElementById('expenses-by-category-table');
+            
+            const expenseMovements = filtered.filter(m => m.type === 'expense');
+            
+            if (expenseMovements.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-text">No hay gastos en este período</div></div>';
+                return;
+            }
+
+            // Group by category
+            const categoryTotals = {};
+            expenseMovements.forEach(mov => {
+                const category = state.categories.find(c => c.id === mov.categoryId);
+                const catName = category ? category.name : 'Sin categoría';
+                
+                if (!categoryTotals[catName]) {
+                    categoryTotals[catName] = { total: 0, count: 0 };
+                }
+                categoryTotals[catName].total += mov.amount;
+                categoryTotals[catName].count++;
+            });
+
+            // Sort by total descending
+            const sorted = Object.entries(categoryTotals)
+                .sort((a, b) => b[1].total - a[1].total);
+
+            const totalExpenses = sorted.reduce((sum, [, data]) => sum + data.total, 0);
+
+            const rows = sorted.map(([categoryName, data], index) => {
+                const percentage = (data.total / totalExpenses * 100).toFixed(1);
+                const avgPerMovement = (data.total / data.count).toFixed(2);
+                
+                return `
+                    <tr>
+                        <td><strong>${index + 1}</strong></td>
+                        <td><strong>${categoryName}</strong></td>
+                        <td style="text-align: right; font-weight: 600; color: #C0392B;">${data.total.toFixed(2)} €</td>
+                        <td style="text-align: right;">${percentage}%</td>
+                        <td style="text-align: right;">${data.count}</td>
+                        <td style="text-align: right;">${avgPerMovement} €</td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Categoría</th>
+                                <th style="text-align: right;">Total Gastado</th>
+                                <th style="text-align: right;">% del Total</th>
+                                <th style="text-align: right;">Nº Movimientos</th>
+                                <th style="text-align: right;">Media/Movimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                            <tr style="background: var(--gray-100); font-weight: 700;">
+                                <td colspan="2"><strong>TOTAL</strong></td>
+                                <td style="text-align: right; color: #C0392B;">${totalExpenses.toFixed(2)} €</td>
+                                <td style="text-align: right;">100%</td>
+                                <td style="text-align: right;">${expenseMovements.length}</td>
+                                <td style="text-align: right;">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // ============================================================================
+        // IMPORT CATEGORIES AND CATEGORIZE MOVEMENTS
+        // ============================================================================
+
+        function importCategoriesAndCategorizeMovements() {
+            const logDiv = document.getElementById('categorize-log');
+            const logContent = document.getElementById('categorize-log-content');
+            
+            logDiv.style.display = 'block';
+            logContent.innerHTML = '';
+
+            function addLog(msg, isSuccess = true) {
+                const line = document.createElement('div');
+                line.textContent = msg;
+                line.style.marginBottom = '4px';
+                if (!isSuccess) line.style.color = '#721C24';
+                logContent.appendChild(line);
+                logContent.scrollTop = logContent.scrollHeight;
+            }
+
+            addLog('🚀 Iniciando importación de categorías...');
+
+            // Define all categories
+            const newCategories = [
+              {"id": "cat-trabajo", "name": "Trabajo", "type": "income", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-trabajo-salario", "name": "Salario", "needsReview": false},
+                  {"id": "subcat-trabajo-bonus-extra", "name": "Bonus / Extra", "needsReview": false},
+                  {"id": "subcat-trabajo-freelance", "name": "Freelance", "needsReview": false}
+                ]},
+              {"id": "cat-inversiones", "name": "Inversiones", "type": "income", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-inversiones-dividendos", "name": "Dividendos", "needsReview": false},
+                  {"id": "subcat-inversiones-intereses", "name": "Intereses", "needsReview": false},
+                  {"id": "subcat-inversiones-alquiler-recibido", "name": "Alquiler recibido", "needsReview": false}
+                ]},
+              {"id": "cat-otros-ingresos", "name": "Otros ingresos", "type": "income", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-otros-ingresos-venta-objetos", "name": "Venta objetos", "needsReview": false},
+                  {"id": "subcat-otros-ingresos-regalo-herencia", "name": "Regalo / Herencia", "needsReview": false},
+                  {"id": "subcat-otros-ingresos-devolucion-impuestos", "name": "Devolución impuestos", "needsReview": false},
+                  {"id": "subcat-otros-ingresos-prestacion-social", "name": "Prestación social", "needsReview": false}
+                ]},
+              {"id": "cat-vivienda", "name": "Vivienda", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-vivienda-hipoteca-alquiler", "name": "Hipoteca / Alquiler", "needsReview": false},
+                  {"id": "subcat-vivienda-comunidad", "name": "Comunidad", "needsReview": false},
+                  {"id": "subcat-vivienda-seguro-hogar", "name": "Seguro hogar", "needsReview": false},
+                  {"id": "subcat-vivienda-mantenimiento", "name": "Mantenimiento", "needsReview": false},
+                  {"id": "subcat-vivienda-muebles-deco", "name": "Muebles / Deco", "needsReview": false}
+                ]},
+              {"id": "cat-suministros", "name": "Suministros", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-suministros-electricidad", "name": "Electricidad", "needsReview": false},
+                  {"id": "subcat-suministros-gas", "name": "Gas", "needsReview": false},
+                  {"id": "subcat-suministros-agua", "name": "Agua", "needsReview": false},
+                  {"id": "subcat-suministros-internet-telefono", "name": "Internet / Teléfono", "needsReview": false},
+                  {"id": "subcat-suministros-streaming-suscripciones", "name": "Streaming / Suscripciones", "needsReview": false}
+                ]},
+              {"id": "cat-alimentacion", "name": "Alimentación", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-alimentacion-supermercado", "name": "Supermercado", "needsReview": false},
+                  {"id": "subcat-alimentacion-tienduca-o-similar", "name": "Tienduca o similar", "needsReview": false},
+                  {"id": "subcat-alimentacion-restaurantes", "name": "Restaurantes", "needsReview": false},
+                  {"id": "subcat-alimentacion-cafes-bares", "name": "Cafés / Bares", "needsReview": false},
+                  {"id": "subcat-alimentacion-comida-a-domicilio", "name": "Comida a domicilio", "needsReview": false}
+                ]},
+              {"id": "cat-transporte", "name": "Transporte", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-transporte-combustible", "name": "Combustible", "needsReview": false},
+                  {"id": "subcat-transporte-transporte-publico", "name": "Transporte público", "needsReview": false},
+                  {"id": "subcat-transporte-taxi-uber", "name": "Taxi / Uber", "needsReview": false},
+                  {"id": "subcat-transporte-mantenimiento-coche", "name": "Mantenimiento coche", "needsReview": false},
+                  {"id": "subcat-transporte-seguro-coche", "name": "Seguro coche", "needsReview": false},
+                  {"id": "subcat-transporte-parking-peajes", "name": "Parking / Peajes", "needsReview": false}
+                ]},
+              {"id": "cat-salud", "name": "Salud", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-salud-medico-dentista", "name": "Médico / Dentista", "needsReview": false},
+                  {"id": "subcat-salud-farmacia", "name": "Farmacia", "needsReview": false},
+                  {"id": "subcat-salud-seguro-medico", "name": "Seguro médico", "needsReview": false},
+                  {"id": "subcat-salud-gimnasio", "name": "Gimnasio", "needsReview": false},
+                  {"id": "subcat-salud-optica", "name": "Óptica", "needsReview": false}
+                ]},
+              {"id": "cat-bebe-ninos", "name": "Bebé / Niños", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-bebe-ninos-guarderia-colegio", "name": "Guardería / Colegio", "needsReview": false},
+                  {"id": "subcat-bebe-ninos-ropa-bebe-nino", "name": "Ropa bebé / niño", "needsReview": false},
+                  {"id": "subcat-bebe-ninos-juguetes", "name": "Juguetes", "needsReview": false},
+                  {"id": "subcat-bebe-ninos-actividades-extraesc", "name": "Actividades extraesc.", "needsReview": false},
+                  {"id": "subcat-bebe-ninos-panales-cuidado", "name": "Pañales / Cuidado", "needsReview": false},
+                  {"id": "subcat-bebe-ninos-material-escolar", "name": "Material escolar", "needsReview": false}
+                ]},
+              {"id": "cat-educacion", "name": "Educación", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-educacion-formacion-cursos", "name": "Formación / Cursos", "needsReview": false},
+                  {"id": "subcat-educacion-libros", "name": "Libros", "needsReview": false},
+                  {"id": "subcat-educacion-universidad", "name": "Universidad", "needsReview": false}
+                ]},
+              {"id": "cat-ropa-calzado", "name": "Ropa / Calzado", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-ropa-calzado-ropa-adulto", "name": "Ropa adulto", "needsReview": false},
+                  {"id": "subcat-ropa-calzado-calzado-adulto", "name": "Calzado adulto", "needsReview": false},
+                  {"id": "subcat-ropa-calzado-accesorios", "name": "Accesorios", "needsReview": false}
+                ]},
+              {"id": "cat-ocio-entretenimiento", "name": "Ocio / Entretenimiento", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-ocio-entretenimiento-cine-teatro-conciertos", "name": "Cine / Teatro / Conciertos", "needsReview": false},
+                  {"id": "subcat-ocio-entretenimiento-viajes-vacaciones", "name": "Viajes / Vacaciones", "needsReview": false},
+                  {"id": "subcat-ocio-entretenimiento-hobbies", "name": "Hobbies", "needsReview": false},
+                  {"id": "subcat-ocio-entretenimiento-juegos-apps", "name": "Juegos / Apps", "needsReview": false}
+                ]},
+              {"id": "cat-mascotas", "name": "Mascotas", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-mascotas-alimentacion-mascota", "name": "Alimentación mascota", "needsReview": false},
+                  {"id": "subcat-mascotas-veterinario", "name": "Veterinario", "needsReview": false},
+                  {"id": "subcat-mascotas-accesorios-mascota", "name": "Accesorios mascota", "needsReview": false},
+                  {"id": "subcat-mascotas-medicinas", "name": "Medicinas", "needsReview": false}
+                ]},
+              {"id": "cat-finanzas-impuestos", "name": "Finanzas / Impuestos", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-finanzas-impuestos-irpf-declaracion", "name": "IRPF / Declaración", "needsReview": false},
+                  {"id": "subcat-finanzas-impuestos-comisiones-bancarias", "name": "Comisiones bancarias", "needsReview": false},
+                  {"id": "subcat-finanzas-impuestos-seguros-vida", "name": "Seguros vida", "needsReview": false},
+                  {"id": "subcat-finanzas-impuestos-deudas-prestamos", "name": "Deudas / Préstamos", "needsReview": false}
+                ]},
+              {"id": "cat-otros-gastos", "name": "Otros gastos", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-otros-gastos-regalos", "name": "Regalos", "needsReview": false},
+                  {"id": "subcat-otros-gastos-donaciones", "name": "Donaciones", "needsReview": false},
+                  {"id": "subcat-otros-gastos-gastos-sin-categoria", "name": "Gastos sin categoría", "needsReview": false}
+                ]},
+              {"id": "cat-transferencia", "name": "Transferencia", "type": "transfer", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-transferencia-entre-cuentas-propias", "name": "Entre cuentas propias", "needsReview": false},
+                  {"id": "subcat-transferencia-ahorro-programado", "name": "Ahorro programado", "needsReview": false},
+                  {"id": "subcat-transferencia-inversion", "name": "Inversión", "needsReview": false}
+                ]},
+              {"id": "cat-vicios", "name": "Vicios", "type": "expense", "parent": null, "needsReview": false,
+                "subcategories": [
+                  {"id": "subcat-vicios-tabaco", "name": "Tabaco", "needsReview": false}
+                ]}
+            ];
+
+            addLog(`✅ ${newCategories.length} categorías preparadas`);
+
+            // Import categories
+            const sinCategorizar = state.categories.find(c => c.id === 'sin-categorizar');
+            state.categories = [sinCategorizar, ...newCategories];
+            addLog(`✅ Categorías importadas correctamente`);
+
+            // Categorization rules
+            const rules = [
+                {keyword: 'nomina', category: 'cat-trabajo', subcategory: 'subcat-trabajo-salario'},
+                {keyword: 'salario', category: 'cat-trabajo', subcategory: 'subcat-trabajo-salario'},
+                {keyword: 'mercadona', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-supermercado'},
+                {keyword: 'lidl', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-supermercado'},
+                {keyword: 'carrefour', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-supermercado'},
+                {keyword: 'supermercado', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-supermercado'},
+                {keyword: 'tienduca', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-tienduca-o-similar'},
+                {keyword: 'pilar', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-tienduca-o-similar'},
+                {keyword: 'restaurante', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-restaurantes'},
+                {keyword: 'rest', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-restaurantes'},
+                {keyword: 'desayuno', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-cafes-bares'},
+                {keyword: 'cafe', category: 'cat-alimentacion', subcategory: 'subcat-alimentacion-cafes-bares'},
+                {keyword: 'gasolina', category: 'cat-transporte', subcategory: 'subcat-transporte-combustible'},
+                {keyword: 'repsol', category: 'cat-transporte', subcategory: 'subcat-transporte-combustible'},
+                {keyword: 'shell', category: 'cat-transporte', subcategory: 'subcat-transporte-combustible'},
+                {keyword: 'cepsa', category: 'cat-transporte', subcategory: 'subcat-transporte-combustible'},
+                {keyword: 'parking', category: 'cat-transporte', subcategory: 'subcat-transporte-parking-peajes'},
+                {keyword: 'aeropuerto', category: 'cat-transporte', subcategory: 'subcat-transporte-parking-peajes'},
+                {keyword: 'metro', category: 'cat-transporte', subcategory: 'subcat-transporte-transporte-publico'},
+                {keyword: 'chatgpt', category: 'cat-suministros', subcategory: 'subcat-suministros-streaming-suscripciones'},
+                {keyword: 'spotify', category: 'cat-suministros', subcategory: 'subcat-suministros-streaming-suscripciones'},
+                {keyword: 'netflix', category: 'cat-suministros', subcategory: 'subcat-suministros-streaming-suscripciones'},
+                {keyword: 'amazon', category: 'cat-suministros', subcategory: 'subcat-suministros-streaming-suscripciones'},
+                {keyword: 'icloud', category: 'cat-suministros', subcategory: 'subcat-suministros-streaming-suscripciones'},
+                {keyword: 'praga', category: 'cat-ocio-entretenimiento', subcategory: 'subcat-ocio-entretenimiento-viajes-vacaciones'},
+                {keyword: 'hotel', category: 'cat-ocio-entretenimiento', subcategory: 'subcat-ocio-entretenimiento-viajes-vacaciones'},
+                {keyword: 'tabaco', category: 'cat-vicios', subcategory: 'subcat-vicios-tabaco'},
+                {keyword: 'pulgas', category: 'cat-mascotas', subcategory: 'subcat-mascotas-medicinas'},
+                {keyword: 'pepin', category: 'cat-mascotas', subcategory: 'subcat-mascotas-medicinas'},
+                {keyword: 'pastillas', category: 'cat-mascotas', subcategory: 'subcat-mascotas-medicinas'},
+                {keyword: 'alquiler', category: 'cat-vivienda', subcategory: 'subcat-vivienda-hipoteca-alquiler'}
+            ];
+
+            addLog('');
+            addLog('🔍 Categorizando movimientos...');
+
+            let updated = 0;
+            let notMatched = 0;
+
+            state.movements.forEach(mov => {
+                const descNorm = normalizeText(mov.description);
+                const match = rules.find(rule => descNorm.includes(normalizeText(rule.keyword)));
+                
+                if (match) {
+                    mov.categoryId = match.category;
+                    mov.subcategoryId = match.subcategory || null;
+                    updated++;
+                } else if (!mov.categoryId || mov.categoryId === 'sin-categorizar') {
+                    notMatched++;
+                }
+            });
+
+            addLog(`✅ ${updated} movimientos categorizados`);
+            addLog(`⚠️  ${notMatched} movimientos sin categorizar (revisar manualmente)`);
+
+            // Save
+            saveState(state);
+            addLog('');
+            addLog('💾 Cambios guardados en localStorage');
+            addLog('');
+            addLog('========================================');
+            addLog('✅ PROCESO COMPLETADO');
+            addLog('========================================');
+            addLog(`📊 Resumen:`);
+            addLog(`   • ${state.categories.length} categorías totales`);
+            addLog(`   • ${state.movements.length} movimientos totales`);
+            addLog(`   • ${updated} movimientos categorizados`);
+            addLog('');
+            addLog('🔄 Recarga la página para ver los cambios');
+
+            // Update views
+            setTimeout(() => {
+                renderMovementsTable();
+                renderCategoriesList();
+                updateSettingsInfo();
+            }, 1000);
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Inicializando aplicación...');
+            console.log('Estado cargado:', state);
+            
+            initNavigation();
+            populateDashboardFilters();
+            applyDashboardFilters();
+            renderMovementsTable();
+            updateSettingsInfo();
+            
+            console.log('Aplicación lista');
+
+            // Register Service Worker for PWA
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/service-worker.js')
+                        .then((registration) => {
+                            console.log('✅ Service Worker registrado:', registration.scope);
+                        })
+                        .catch((error) => {
+                            console.log('❌ Error registrando Service Worker:', error);
+                        });
+                });
+            }
+
+            // PWA Install prompt
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                
+                // Show install button/banner (opcional)
+                console.log('💡 La app se puede instalar');
+            });
+
+            window.addEventListener('appinstalled', () => {
+                console.log('✅ PWA instalada correctamente');
+                deferredPrompt = null;
+            });
+        });
+    </script>
+</body>
+</html>
