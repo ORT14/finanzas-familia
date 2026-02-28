@@ -1204,7 +1204,68 @@
                 .replace(/\s+/g, ' ');
         }
 
-        function loadState() {
+        async function loadState() {
+            if (USE_SUPABASE) {
+                console.log('📥 Cargando datos desde Supabase...');
+                try {
+                    // Cargar cuentas
+                    const { data: accounts, error: accErr } = await supabase.from('accounts').select('*');
+                    if (accErr) throw accErr;
+                    
+                    // Cargar categorías
+                    const { data: categories, error: catErr } = await supabase.from('categories').select('*');
+                    if (catErr) throw catErr;
+                    
+                    // Cargar movimientos
+                    const { data: movements, error: movErr } = await supabase.from('movements').select('*').order('date', { ascending: false });
+                    if (movErr) throw movErr;
+                    
+                    // Cargar plantillas
+                    const { data: templates, error: tmpErr } = await supabase.from('templates').select('*');
+                    if (tmpErr) throw tmpErr;
+                    
+                    // Cargar reglas
+                    const { data: rules, error: rulErr } = await supabase.from('rules').select('*');
+                    if (rulErr) throw rulErr;
+                    
+                    // Si no hay datos, usar los defaults y guardarlos en Supabase
+                    if (!accounts || accounts.length === 0) {
+                        console.log('⚠️ No hay datos en Supabase, guardando defaults...');
+                        await saveInitialDataToSupabase();
+                        return { ...DEFAULT_STATE };
+                    }
+                    
+                    // Convertir de formato Supabase a formato local
+                    const localState = {
+                        schemaVersion: CURRENT_SCHEMA_VERSION,
+                        accounts: accounts || [],
+                        categories: categories || [],
+                        movements: (movements || []).map(m => convertSupabaseToLocal(m)),
+                        templates: templates || [],
+                        rules: rules || []
+                    };
+                    
+                    console.log('✅ Datos cargados desde Supabase:', {
+                        accounts: localState.accounts.length,
+                        categories: localState.categories.length,
+                        movements: localState.movements.length,
+                        templates: localState.templates.length,
+                        rules: localState.rules.length
+                    });
+                    
+                    return localState;
+                    
+                } catch (error) {
+                    console.error('❌ Error cargando desde Supabase:', error);
+                    alert('⚠️ Error conectando con Supabase. Usando datos locales.');
+                    return loadFromLocalStorage();
+                }
+            } else {
+                return loadFromLocalStorage();
+            }
+        }
+
+        function loadFromLocalStorage() {
             try {
                 const stored = localStorage.getItem('finanzas-familia-state');
                 if (!stored) {
@@ -1228,15 +1289,36 @@
             }
         }
 
-        function saveState(state) {
+        async function saveInitialDataToSupabase() {
+            console.log('💾 Guardando datos iniciales en Supabase...');
+            
             try {
-                localStorage.setItem('finanzas-familia-state', JSON.stringify(state));
-                console.log('Estado guardado correctamente');
-                return true;
+                await supabase.from('accounts').insert(DEFAULT_STATE.accounts);
+                await supabase.from('categories').insert(DEFAULT_STATE.categories);
+                await supabase.from('templates').insert(DEFAULT_STATE.templates);
+                await supabase.from('rules').insert(DEFAULT_STATE.rules);
+                console.log('✅ Datos iniciales guardados en Supabase');
             } catch (error) {
-                console.error('Error al guardar estado:', error);
-                alert('Error al guardar los datos. Por favor, verifica el espacio disponible.');
-                return false;
+                console.error('❌ Error guardando datos iniciales:', error);
+            }
+        }
+
+        function saveState(state) {
+            if (USE_SUPABASE) {
+                // En modo Supabase, los datos se guardan individualmente en cada operación
+                // Esta función se mantiene por compatibilidad
+                console.log('💾 Usando Supabase - datos guardados automáticamente');
+                return true;
+            } else {
+                try {
+                    localStorage.setItem('finanzas-familia-state', JSON.stringify(state));
+                    console.log('Estado guardado correctamente');
+                    return true;
+                } catch (error) {
+                    console.error('Error al guardar estado:', error);
+                    alert('Error al guardar los datos. Por favor, verifica el espacio disponible.');
+                    return false;
+                }
             }
         }
 
@@ -1779,8 +1861,14 @@
             if (currentValue) select.value = currentValue;
         }
 
-        function saveMovement(event) {
+        async function saveMovement(event) {
             event.preventDefault();
+
+            // Si estamos usando Supabase, usar la función específica
+            if (USE_SUPABASE) {
+                await saveMovementToSupabase(event);
+                return;
+            }
 
             const id = document.getElementById('movement-id').value;
             const type = document.getElementById('movement-type').value;
@@ -1843,9 +1931,36 @@
             renderMovementsTable();
         }
 
-        function deleteMovement(id) {
+        async function deleteMovement(id) {
             if (!confirm('¿Estás seguro de eliminar este movimiento?')) return;
 
+            // Si estamos usando Supabase
+            if (USE_SUPABASE) {
+                try {
+                    const { error } = await supabase
+                        .from('movements')
+                        .delete()
+                        .eq('id', id);
+                    
+                    if (error) throw error;
+                    
+                    state.movements = state.movements.filter(m => m.id !== id);
+                    renderMovementsTable();
+                    
+                    if (currentView === 'dashboard') {
+                        applyDashboardFilters();
+                    }
+                    
+                    console.log('✅ Movimiento eliminado de Supabase');
+                    return;
+                } catch (error) {
+                    console.error('❌ Error eliminando:', error);
+                    alert('❌ Error al eliminar: ' + error.message);
+                    return;
+                }
+            }
+
+            // Si estamos usando localStorage
             state.movements = state.movements.filter(m => m.id !== id);
             saveState(state);
             renderMovementsTable();
@@ -4039,6 +4154,121 @@
                 renderCategoriesList();
                 updateSettingsInfo();
             }, 1000);
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        // ============================================================================
+        // SUPABASE HELPER FUNCTIONS
+        // ============================================================================
+
+        function convertSupabaseToLocal(supabaseObj) {
+            return {
+                id: supabaseObj.id,
+                type: supabaseObj.type,
+                date: supabaseObj.date,
+                amount: parseFloat(supabaseObj.amount),
+                description: supabaseObj.description,
+                accountId: supabaseObj.account_id,
+                fromAccountId: supabaseObj.from_account_id,
+                toAccountId: supabaseObj.to_account_id,
+                categoryId: supabaseObj.category_id,
+                subcategoryId: supabaseObj.subcategory_id,
+                notes: supabaseObj.notes || ''
+            };
+        }
+
+        async function saveMovementToSupabase(event) {
+            const id = document.getElementById('movement-id').value;
+            const type = document.getElementById('movement-type').value;
+            const date = document.getElementById('movement-date').value;
+            const amount = parseFloat(document.getElementById('movement-amount').value);
+            const description = document.getElementById('movement-description').value;
+            const categoryId = document.getElementById('movement-category').value || 'sin-categorizar';
+            const subcategoryId = document.getElementById('movement-subcategory')?.value || null;
+
+            let accountId = null, fromAccountId = null, toAccountId = null;
+
+            if (type === 'transfer') {
+                fromAccountId = document.getElementById('movement-from').value;
+                toAccountId = document.getElementById('movement-to').value;
+                
+                if (!fromAccountId || !toAccountId) {
+                    alert('❌ Debes seleccionar ambas cuentas para una transferencia');
+                    return;
+                }
+                if (fromAccountId === toAccountId) {
+                    alert('❌ Las cuentas de origen y destino deben ser diferentes');
+                    return;
+                }
+            } else {
+                accountId = document.getElementById('movement-account').value;
+                if (!accountId) {
+                    alert('❌ Debes seleccionar una cuenta');
+                    return;
+                }
+            }
+
+            const movement = {
+                id: id || `mov-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                type,
+                date,
+                amount,
+                description,
+                account_id: accountId,
+                from_account_id: fromAccountId,
+                to_account_id: toAccountId,
+                category_id: categoryId,
+                subcategory_id: subcategoryId,
+                notes: '',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            try {
+                if (id) {
+                    // Actualizar existente
+                    const { error } = await supabase
+                        .from('movements')
+                        .update(movement)
+                        .eq('id', id);
+                    
+                    if (error) throw error;
+                    
+                    // Actualizar en estado local
+                    const index = state.movements.findIndex(m => m.id === id);
+                    if (index !== -1) {
+                        state.movements[index] = convertSupabaseToLocal(movement);
+                    }
+                    
+                    console.log('✅ Movimiento actualizado en Supabase');
+                } else {
+                    // Crear nuevo
+                    const { error } = await supabase
+                        .from('movements')
+                        .insert([movement]);
+                    
+                    if (error) throw error;
+                    
+                    // Añadir a estado local
+                    state.movements.unshift(convertSupabaseToLocal(movement));
+                    
+                    console.log('✅ Movimiento creado en Supabase');
+                }
+                
+                closeMovementModal();
+                renderMovementsTable();
+                
+                if (currentView === 'dashboard') {
+                    applyDashboardFilters();
+                }
+                
+            } catch (error) {
+                console.error('❌ Error guardando movimiento:', error);
+                alert('❌ Error al guardar: ' + error.message);
+            }
         }
 
         // ============================================================================
