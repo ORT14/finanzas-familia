@@ -18,8 +18,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Chart.js for graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <!-- Supabase Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -592,15 +590,32 @@
                             <input type="date" class="form-control" id="filter-date-to" onchange="applyDashboardFilters()">
                         </div>
 
-                        <!-- Accounts (multi) -->
+                        <!-- Accounts (custom multi-select) -->
                         <div class="form-group" style="margin-bottom: 0;">
                             <label class="form-label">Cuentas</label>
-                            <select class="form-control" id="filter-accounts" multiple onchange="applyDashboardFilters()" 
-                                    style="min-height: 120px; padding: 8px;">
-                                <option value="all" selected>Todas las cuentas</option>
-                            </select>
-                            <div style="font-size: 11px; color: var(--gray-600); margin-top: 4px;">
-                                💡 Mantén Ctrl (o Cmd en Mac) para seleccionar varias
+                            <div style="position: relative;">
+                                <div class="form-control" id="accounts-dropdown-trigger" 
+                                     style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;"
+                                     onclick="toggleAccountsDropdown()">
+                                    <span id="accounts-selected-text">Todas las cuentas</span>
+                                    <span style="color: var(--gray-500); font-size: 18px;">▼</span>
+                                </div>
+                                
+                                <!-- Dropdown menu -->
+                                <div id="accounts-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; 
+                                     background: white; border: 1px solid var(--gray-200); border-radius: 6px; 
+                                     box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; margin-top: 4px; max-height: 300px; overflow-y: auto;">
+                                    <div style="padding: 8px;">
+                                        <label style="display: flex; align-items: center; padding: 8px 12px; cursor: pointer; border-radius: 4px; transition: background 0.2s;"
+                                               onmouseover="this.style.background='var(--gray-50)'" 
+                                               onmouseout="this.style.background='white'">
+                                            <input type="checkbox" value="all" checked onchange="handleAccountCheckbox(this)" 
+                                                   style="margin-right: 8px; width: 16px; height: 16px; cursor: pointer;">
+                                            <span>Todas las cuentas</span>
+                                        </label>
+                                        <div id="accounts-checkboxes-list"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1089,18 +1104,6 @@
 
         const CURRENT_SCHEMA_VERSION = 1;
 
-        // ============================================================================
-        // SUPABASE CONFIGURATION
-        // ============================================================================
-        const SUPABASE_URL = 'https://jeqxgesqdffidtyfzjsl.supabase.co';  // ← REEMPLAZA con tu URL
-        const SUPABASE_ANON_KEY = 'sb_publishable_FEdN1t50ywEeVYimXlviTA_NL3NRCRk';  // ← REEMPLAZA con tu KEY
-        
-        const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-        
-        // Flag para saber si usar Supabase o localStorage
-        const USE_SUPABASE = supabase !== null && SUPABASE_URL !== 'TU_PROJECT_URL_AQUI';
-        
-        console.log('🔧 Modo de almacenamiento:', USE_SUPABASE ? '☁️ Supabase (Cloud)' : '💾 localStorage (Local)');
         const DEFAULT_STATE = {
             schemaVersion: CURRENT_SCHEMA_VERSION,
             accounts: [
@@ -1201,109 +1204,41 @@
                 .replace(/\s+/g, ' ');
         }
 
-       async function loadState() {
-    if (USE_SUPABASE) {
-        console.log('📥 Cargando datos desde Supabase...');
-        try {
-            // Cargar cuentas
-            const { data: accounts, error: accErr } = await supabase.from('accounts').select('*');
-            if (accErr) throw accErr;
-            
-            // Cargar categorías
-            const { data: categories, error: catErr } = await supabase.from('categories').select('*');
-            if (catErr) throw catErr;
-            
-            // Cargar movimientos
-            const { data: movements, error: movErr } = await supabase.from('movements').select('*').order('date', { ascending: false });
-            if (movErr) throw movErr;
-            
-            // Cargar plantillas
-            const { data: templates, error: tmpErr } = await supabase.from('templates').select('*');
-            if (tmpErr) throw tmpErr;
-            
-            // Cargar reglas
-            const { data: rules, error: rulErr } = await supabase.from('rules').select('*');
-            if (rulErr) throw rulErr;
-            
-            // Si no hay datos, usar los defaults y guardarlos en Supabase
-            if (!accounts || accounts.length === 0) {
-                console.log('⚠️ No hay datos en Supabase, guardando defaults...');
-                await saveInitialDataToSupabase();
-                state.accounts = DEFAULT_STATE.accounts;
-                state.categories = DEFAULT_STATE.categories;
-                state.movements = DEFAULT_STATE.movements;
-                state.templates = DEFAULT_STATE.templates;
-                state.rules = DEFAULT_STATE.rules;
-            } else {
-                state.accounts = accounts || [];
-                state.categories = categories || [];
-                state.movements = movements || [];
-                state.templates = templates || [];
-                state.rules = rules || [];
+        function loadState() {
+            try {
+                const stored = localStorage.getItem('finanzas-familia-state');
+                if (!stored) {
+                    console.log('No hay estado guardado, usando estado por defecto');
+                    return JSON.parse(JSON.stringify(DEFAULT_STATE));
+                }
+                
+                const state = JSON.parse(stored);
+                console.log('Estado cargado, versión:', state.schemaVersion);
+                
+                // Migrar si es necesario
+                if (state.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+                    console.log('Migrando estado de versión', state.schemaVersion, 'a', CURRENT_SCHEMA_VERSION);
+                    return migrateState(state);
+                }
+                
+                return state;
+            } catch (error) {
+                console.error('Error al cargar estado:', error);
+                return JSON.parse(JSON.stringify(DEFAULT_STATE));
             }
-            
-            console.log('✅ Datos cargados desde Supabase:', {
-                accounts: state.accounts.length,
-                categories: state.categories.length,
-                movements: state.movements.length,
-                templates: state.templates.length,
-                rules: state.rules.length
-            });
-            
-            return state;
-            
-        } catch (error) {
-            console.error('❌ Error cargando desde Supabase:', error);
-            alert('⚠️ Error conectando con Supabase. Usando datos locales.');
-            return loadFromLocalStorage();
         }
-    } else {
-        return loadFromLocalStorage();
-    }
-}
 
-function loadFromLocalStorage() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-        try {
-            const loaded = JSON.parse(stored);
-            const migrated = migrateState(loaded);
-            return migrated;
-        } catch (error) {
-            console.error('Error cargando estado:', error);
-            return { ...DEFAULT_STATE };
+        function saveState(state) {
+            try {
+                localStorage.setItem('finanzas-familia-state', JSON.stringify(state));
+                console.log('Estado guardado correctamente');
+                return true;
+            } catch (error) {
+                console.error('Error al guardar estado:', error);
+                alert('Error al guardar los datos. Por favor, verifica el espacio disponible.');
+                return false;
+            }
         }
-    }
-    return { ...DEFAULT_STATE };
-}
-
-async function saveInitialDataToSupabase() {
-    console.log('💾 Guardando datos iniciales en Supabase...');
-    
-    try {
-        await supabase.from('accounts').insert(DEFAULT_STATE.accounts);
-        await supabase.from('categories').insert(DEFAULT_STATE.categories);
-        await supabase.from('templates').insert(DEFAULT_STATE.templates);
-        await supabase.from('rules').insert(DEFAULT_STATE.rules);
-        console.log('✅ Datos iniciales guardados en Supabase');
-    } catch (error) {
-        console.error('❌ Error guardando datos iniciales:', error);
-    }
-}
-
-        async function saveState(state) {
-    if (USE_SUPABASE) {
-        // En modo Supabase, los datos se guardan individualmente en cada operación
-        // Esta función se mantiene por compatibilidad
-        console.log('💾 Usando Supabase - datos guardados automáticamente');
-    } else {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-            console.error('Error guardando estado:', error);
-        }
-    }
-}
 
         function migrateState(oldState) {
             const state = JSON.parse(JSON.stringify(oldState));
@@ -1350,7 +1285,7 @@ async function saveInitialDataToSupabase() {
         // GLOBAL STATE
         // ============================================================================
 
-        let state = loadState();
+        let state = { ...DEFAULT_STATE }; // Inicializar con defaults temporalmente
 
         // ============================================================================
         // NAVIGATION
@@ -1846,10 +1781,6 @@ async function saveInitialDataToSupabase() {
 
         function saveMovement(event) {
             event.preventDefault();
-               if (USE_SUPABASE) {
-                    await saveMovementToSupabase(event);
-                    return;
-                }
 
             const id = document.getElementById('movement-id').value;
             const type = document.getElementById('movement-type').value;
@@ -1914,31 +1845,7 @@ async function saveInitialDataToSupabase() {
 
         function deleteMovement(id) {
             if (!confirm('¿Estás seguro de eliminar este movimiento?')) return;
-            // ========== AÑADIR ESTO ==========
-    if (USE_SUPABASE) {
-        try {
-            const { error } = await supabase
-                .from('movements')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            
-            state.movements = state.movements.filter(m => m.id !== id);
-            renderMovementsTable();
-            
-            if (currentView === 'dashboard') {
-                applyDashboardFilters();
-            }
-            
-            console.log('✅ Movimiento eliminado de Supabase');
-            return;
-        } catch (error) {
-            console.error('❌ Error eliminando:', error);
-            alert('❌ Error al eliminar: ' + error.message);
-            return;
-        }
-    }
+
             state.movements = state.movements.filter(m => m.id !== id);
             saveState(state);
             renderMovementsTable();
@@ -3157,15 +3064,19 @@ async function saveInitialDataToSupabase() {
         };
 
         function populateDashboardFilters() {
-            // Populate accounts selector
-            const accountsSelect = document.getElementById('filter-accounts');
-            accountsSelect.innerHTML = '<option value="all">Todas las cuentas</option>';
-            state.accounts.forEach(account => {
-                const option = document.createElement('option');
-                option.value = account.id;
-                option.textContent = account.name;
-                accountsSelect.appendChild(option);
-            });
+            // Populate accounts checkboxes
+            const accountsCheckboxesList = document.getElementById('accounts-checkboxes-list');
+            if (accountsCheckboxesList) {
+                accountsCheckboxesList.innerHTML = state.accounts.map(account => `
+                    <label style="display: flex; align-items: center; padding: 8px 12px; cursor: pointer; border-radius: 4px; transition: background 0.2s;"
+                           onmouseover="this.style.background='var(--gray-50)'" 
+                           onmouseout="this.style.background='white'">
+                        <input type="checkbox" value="${account.id}" checked onchange="handleAccountCheckbox(this)" 
+                               class="account-checkbox" style="margin-right: 8px; width: 16px; height: 16px; cursor: pointer;">
+                        <span>${account.name}</span>
+                    </label>
+                `).join('');
+            }
 
             // Populate categories selector
             const categorySelect = document.getElementById('filter-category');
@@ -3179,6 +3090,69 @@ async function saveInitialDataToSupabase() {
                 }
             });
         }
+
+        let accountsDropdownOpen = false;
+
+        function toggleAccountsDropdown() {
+            const menu = document.getElementById('accounts-dropdown-menu');
+            accountsDropdownOpen = !accountsDropdownOpen;
+            menu.style.display = accountsDropdownOpen ? 'block' : 'none';
+        }
+
+        function handleAccountCheckbox(checkbox) {
+            const allCheckbox = document.querySelector('#accounts-dropdown-menu input[value="all"]');
+            const accountCheckboxes = document.querySelectorAll('.account-checkbox');
+            
+            if (checkbox.value === 'all') {
+                // Si clickean "Todas", marcar/desmarcar todas las demás
+                accountCheckboxes.forEach(cb => {
+                    cb.checked = checkbox.checked;
+                });
+            } else {
+                // Si clickean una cuenta individual
+                // Si todas las individuales están marcadas, marcar "Todas"
+                const allChecked = Array.from(accountCheckboxes).every(cb => cb.checked);
+                allCheckbox.checked = allChecked;
+            }
+            
+            updateAccountsSelectedText();
+            applyDashboardFilters();
+        }
+
+        function updateAccountsSelectedText() {
+            const allCheckbox = document.querySelector('#accounts-dropdown-menu input[value="all"]');
+            const accountCheckboxes = document.querySelectorAll('.account-checkbox');
+            const selectedText = document.getElementById('accounts-selected-text');
+            
+            if (!selectedText) return;
+            
+            const checkedAccounts = Array.from(accountCheckboxes).filter(cb => cb.checked);
+            
+            if (allCheckbox && allCheckbox.checked || checkedAccounts.length === accountCheckboxes.length) {
+                selectedText.textContent = 'Todas las cuentas';
+            } else if (checkedAccounts.length === 0) {
+                selectedText.textContent = 'Ninguna cuenta';
+            } else if (checkedAccounts.length === 1) {
+                const accountId = checkedAccounts[0].value;
+                const account = state.accounts.find(a => a.id === accountId);
+                selectedText.textContent = account ? account.name : '1 cuenta';
+            } else {
+                selectedText.textContent = `${checkedAccounts.length} cuentas`;
+            }
+        }
+
+        // Cerrar dropdown al hacer click fuera
+        document.addEventListener('click', function(event) {
+            const trigger = document.getElementById('accounts-dropdown-trigger');
+            const menu = document.getElementById('accounts-dropdown-menu');
+            
+            if (trigger && menu && accountsDropdownOpen) {
+                if (!trigger.contains(event.target) && !menu.contains(event.target)) {
+                    accountsDropdownOpen = false;
+                    menu.style.display = 'none';
+                }
+            }
+        });
 
         function applyDashboardFilters() {
             // Read filter values
@@ -3200,10 +3174,10 @@ async function saveInitialDataToSupabase() {
                 document.getElementById('custom-dates-to').style.display = 'none';
             }
 
-            // Get accounts (multi-select)
-            const accountsSelect = document.getElementById('filter-accounts');
-            const selectedAccounts = Array.from(accountsSelect.selectedOptions).map(opt => opt.value);
-            dashboardFilters.accounts = selectedAccounts.length > 0 ? selectedAccounts : ['all'];
+            // Get accounts (from checkboxes)
+            const accountCheckboxes = document.querySelectorAll('.account-checkbox:checked');
+            const selectedAccounts = Array.from(accountCheckboxes).map(cb => cb.value);
+            dashboardFilters.accounts = selectedAccounts.length > 0 ? selectedAccounts : [];
 
             // Render dashboard
             renderDashboard();
@@ -3217,8 +3191,12 @@ async function saveInitialDataToSupabase() {
             document.getElementById('filter-search').value = '';
             document.getElementById('filter-exclude-transfers').checked = true;
             
-            const accountsSelect = document.getElementById('filter-accounts');
-            accountsSelect.selectedIndex = 0;
+            // Reset all account checkboxes to checked
+            const allCheckbox = document.querySelector('#accounts-dropdown-menu input[value="all"]');
+            const accountCheckboxes = document.querySelectorAll('.account-checkbox');
+            if (allCheckbox) allCheckbox.checked = true;
+            accountCheckboxes.forEach(cb => cb.checked = true);
+            updateAccountsSelectedText();
             
             applyDashboardFilters();
         }
@@ -4067,8 +4045,11 @@ async function saveInitialDataToSupabase() {
         // INITIALIZATION
         // ============================================================================
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             console.log('Inicializando aplicación...');
+            
+            // Load state FIRST (async)
+            state = await loadState();
             console.log('Estado cargado:', state);
             
             initNavigation();
@@ -4097,8 +4078,6 @@ async function saveInitialDataToSupabase() {
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
-                
-                // Show install button/banner (opcional)
                 console.log('💡 La app se puede instalar');
             });
 
@@ -4106,12 +4085,11 @@ async function saveInitialDataToSupabase() {
                 console.log('✅ PWA instalada correctamente');
                 deferredPrompt = null;
             });
-
+            
             // SINCRONIZACIÓN TIEMPO REAL CON SUPABASE
             if (USE_SUPABASE) {
                 console.log('🔄 Activando sincronización en tiempo real...');
                 
-                // Escuchar cambios en movimientos
                 supabase
                     .channel('movements-realtime')
                     .on('postgres_changes', 
@@ -4120,25 +4098,20 @@ async function saveInitialDataToSupabase() {
                             console.log('🔔 Cambio detectado:', payload.eventType);
                             
                             if (payload.eventType === 'INSERT') {
-                                // Nuevo movimiento
                                 const newMov = convertSupabaseToLocal(payload.new);
-                                // Solo añadir si no existe ya (evitar duplicados)
                                 if (!state.movements.find(m => m.id === newMov.id)) {
                                     state.movements.unshift(newMov);
                                 }
                             } else if (payload.eventType === 'UPDATE') {
-                                // Movimiento actualizado
                                 const updatedMov = convertSupabaseToLocal(payload.new);
                                 const index = state.movements.findIndex(m => m.id === updatedMov.id);
                                 if (index !== -1) {
                                     state.movements[index] = updatedMov;
                                 }
                             } else if (payload.eventType === 'DELETE') {
-                                // Movimiento eliminado
                                 state.movements = state.movements.filter(m => m.id !== payload.old.id);
                             }
                             
-                            // Refrescar vistas
                             if (currentView === 'movements') {
                                 renderMovementsTable();
                             } else if (currentView === 'dashboard') {
@@ -4153,117 +4126,6 @@ async function saveInitialDataToSupabase() {
                     });
             }
         });
-
-        // ============================================================================
-// SUPABASE FUNCTIONS
-// ============================================================================
-
-async function saveMovementToSupabase(event) {
-    const id = document.getElementById('movement-id').value;
-    const type = document.getElementById('movement-type').value;
-    const date = document.getElementById('movement-date').value;
-    const amount = parseFloat(document.getElementById('movement-amount').value);
-    const description = document.getElementById('movement-description').value;
-    const categoryId = document.getElementById('movement-category').value || 'sin-categorizar';
-    const subcategoryId = document.getElementById('movement-subcategory')?.value || null;
-
-    let accountId = null, fromAccountId = null, toAccountId = null;
-
-    if (type === 'transfer') {
-        fromAccountId = document.getElementById('movement-from').value;
-        toAccountId = document.getElementById('movement-to').value;
-        
-        if (!fromAccountId || !toAccountId) {
-            alert('❌ Debes seleccionar ambas cuentas para una transferencia');
-            return;
-        }
-        if (fromAccountId === toAccountId) {
-            alert('❌ Las cuentas de origen y destino deben ser diferentes');
-            return;
-        }
-    } else {
-        accountId = document.getElementById('movement-account').value;
-        if (!accountId) {
-            alert('❌ Debes seleccionar una cuenta');
-            return;
-        }
-    }
-
-    const movement = {
-        id: id || `mov-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type,
-        date,
-        amount,
-        description,
-        account_id: accountId,
-        from_account_id: fromAccountId,
-        to_account_id: toAccountId,
-        category_id: categoryId,
-        subcategory_id: subcategoryId,
-        notes: '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
-
-    try {
-        if (id) {
-            // Actualizar existente
-            const { error } = await supabase
-                .from('movements')
-                .update(movement)
-                .eq('id', id);
-            
-            if (error) throw error;
-            
-            // Actualizar en estado local
-            const index = state.movements.findIndex(m => m.id === id);
-            if (index !== -1) {
-                state.movements[index] = convertSupabaseToLocal(movement);
-            }
-            
-            console.log('✅ Movimiento actualizado en Supabase');
-        } else {
-            // Crear nuevo
-            const { error } = await supabase
-                .from('movements')
-                .insert([movement]);
-            
-            if (error) throw error;
-            
-            // Añadir a estado local
-            state.movements.unshift(convertSupabaseToLocal(movement));
-            
-            console.log('✅ Movimiento creado en Supabase');
-        }
-        
-        closeMovementModal();
-        renderMovementsTable();
-        
-        if (currentView === 'dashboard') {
-            applyDashboardFilters();
-        }
-        
-    } catch (error) {
-        console.error('❌ Error guardando movimiento:', error);
-        alert('❌ Error al guardar: ' + error.message);
-    }
-}
-
-function convertSupabaseToLocal(supabaseObj) {
-    return {
-        id: supabaseObj.id,
-        type: supabaseObj.type,
-        date: supabaseObj.date,
-        amount: parseFloat(supabaseObj.amount),
-        description: supabaseObj.description,
-        accountId: supabaseObj.account_id,
-        fromAccountId: supabaseObj.from_account_id,
-        toAccountId: supabaseObj.to_account_id,
-        categoryId: supabaseObj.category_id,
-        subcategoryId: supabaseObj.subcategory_id,
-        notes: supabaseObj.notes || ''
-    };
-}
     </script>
 </body>
 </html>
