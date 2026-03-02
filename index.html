@@ -1334,27 +1334,27 @@ function initSupabase() {
                 console.log('📥 Cargando datos desde Supabase...');
                 try {
                     // Cargar cuentas
-                    const { data: accounts, error: accErr } = await supabase.from('accounts').select('*');
+                    const { data: accounts, error: accErr } = await supabaseClient.from('accounts').select('*');
                     if (accErr) throw accErr;
                     
                     // Cargar categorías
-                    const { data: categories, error: catErr } = await supabase.from('categories').select('*');
+                    const { data: categories, error: catErr } = await supabaseClient.from('categories').select('*');
                     if (catErr) throw catErr;
                     
                     // Cargar movimientos
-                    const { data: movements, error: movErr } = await supabase.from('movements').select('*').order('date', { ascending: false });
+                    const { data: movements, error: movErr } = await supabaseClient.from('movements').select('*').order('date', { ascending: false });
                     if (movErr) throw movErr;
                     
                     // Cargar plantillas
-                    const { data: templates, error: tmpErr } = await supabase.from('templates').select('*');
+                    const { data: templates, error: tmpErr } = await supabaseClient.from('templates').select('*');
                     if (tmpErr) throw tmpErr;
                     
                     // Cargar reglas
-                    const { data: rules, error: rulErr } = await supabase.from('rules').select('*');
+                    const { data: rules, error: rulErr } = await supabaseClient.from('rules').select('*');
                     if (rulErr) throw rulErr;
 
                     // Cargar budgets
-                    const { data: budgets, error: budErr } = await supabase.from('budgets').select('*');
+                    const { data: budgets, error: budErr } = await supabaseClient.from('budgets').select('*');
                     if (budErr) throw budErr;
                     
                     // Si no hay datos, usar los defaults y guardarlos en Supabase
@@ -1437,10 +1437,10 @@ function initSupabase() {
             console.log('💾 Guardando datos iniciales en Supabase...');
             
             try {
-                await supabase.from('accounts').insert(DEFAULT_STATE.accounts);
-                await supabase.from('categories').insert(DEFAULT_STATE.categories);
-                await supabase.from('templates').insert(DEFAULT_STATE.templates);
-                await supabase.from('rules').insert(DEFAULT_STATE.rules);
+                await supabaseClient.from('accounts').insert(DEFAULT_STATE.accounts);
+                await supabaseClient.from('categories').insert(DEFAULT_STATE.categories);
+                await supabaseClient.from('templates').insert(DEFAULT_STATE.templates);
+                await supabaseClient.from('rules').insert(DEFAULT_STATE.rules);
                 console.log('✅ Datos iniciales guardados en Supabase');
             } catch (error) {
                 console.error('❌ Error guardando datos iniciales:', error);
