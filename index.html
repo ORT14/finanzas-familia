@@ -1194,10 +1194,22 @@
         
         const SUPABASE_URL = 'https://jeqxgesqdffidtyfzjsl.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_FEdN1t50ywEeVYimXlviTA_NL3NRCRk';
-        const supabase = SUPABASE_URL.includes('TU-PROJECT') ? null : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const USE_SUPABASE = supabase !== null;
-        
-        console.log('🔧 Modo de almacenamiento:', USE_SUPABASE ? '☁️ Supabase (Cloud)' : '💾 localStorage');
+       // Esperar a que window.supabase esté disponible
+let supabase = null;
+let USE_SUPABASE = false;
+
+if (!SUPABASE_URL.includes('TU-PROJECT') && typeof window.supabase !== 'undefined') {
+    try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        USE_SUPABASE = true;
+        console.log('🔧 Modo de almacenamiento: ☁️ Supabase (Cloud)');
+    } catch (error) {
+        console.error('Error inicializando Supabase:', error);
+        console.log('🔧 Modo de almacenamiento: 💾 localStorage');
+    }
+} else {
+    console.log('🔧 Modo de almacenamiento: 💾 localStorage');
+}
         // ============================================================================
         // DATA MODEL & STATE MANAGEMENT
         // ============================================================================
