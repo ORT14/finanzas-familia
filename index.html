@@ -18,6 +18,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Chart.js for graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="budgets-analysis.js"></script>
     <style>
         * {
             margin: 0;
@@ -539,6 +540,14 @@
                     <span class="nav-item-icon">📋</span>
                     Movimientos
                 </a>
+                <a class="nav-item" data-view="budgets">
+                    <span class="nav-item-icon">💰</span>
+                    Presupuestos
+                </a>
+                <a class="nav-item" data-view="analysis">
+                    <span class="nav-item-icon">📈</span>
+                    Análisis
+                </a>
                 <a class="nav-item" data-view="categories">
                     <span class="nav-item-icon">🏷️</span>
                     Categorías
@@ -944,6 +953,85 @@
                     <button class="btn btn-danger" onclick="resetApp()">🗑️ Resetear aplicación</button>
                 </div>
             </div>
+
+            <!-- Budgets View -->
+            <div class="view" id="view-budgets">
+                <div class="view-header">
+                    <h2>💰 Presupuestos Mensuales</h2>
+                    <p>Define y controla tus límites de gasto por categoría</p>
+                </div>
+
+                <!-- Period Selector -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <div class="form-group" style="margin: 0; flex: 1; max-width: 200px;">
+                            <label class="form-label">Mes</label>
+                            <select class="form-control" id="budget-month" onchange="renderBudgets()">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin: 0; flex: 1; max-width: 200px;">
+                            <label class="form-label">Año</label>
+                            <select class="form-control" id="budget-year" onchange="renderBudgets()">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="showAddBudgetModal()" style="margin-top: 24px;">
+                            + Añadir Presupuesto
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Budgets Summary Cards -->
+                <div id="budgets-summary" style="margin-bottom: 24px;">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Budgets Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Detalle de Presupuestos</h3>
+                    </div>
+                    <div id="budgets-table-container"></div>
+                </div>
+            </div>
+
+            <!-- Analysis View -->
+            <div class="view" id="view-analysis">
+                <div class="view-header">
+                    <h2>📈 Análisis Avanzado</h2>
+                    <p>Tendencias, predicciones y recomendaciones inteligentes</p>
+                </div>
+
+                <!-- Analysis Tabs -->
+                <div style="border-bottom: 2px solid var(--gray-200); margin-bottom: 24px; display: flex; gap: 4px;">
+                    <button onclick="switchAnalysisTab('trends')" id="analysis-tab-trends" 
+                            class="btn btn-sm" 
+                            style="border-radius: 8px 8px 0 0; background: var(--primary); color: white; border: none; padding: 12px 24px;">
+                        📊 Tendencias
+                    </button>
+                    <button onclick="switchAnalysisTab('predictions')" id="analysis-tab-predictions" 
+                            class="btn btn-sm" 
+                            style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 24px;">
+                        🔮 Predicciones
+                    </button>
+                    <button onclick="switchAnalysisTab('comparisons')" id="analysis-tab-comparisons" 
+                            class="btn btn-sm" 
+                            style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 24px;">
+                        📉 Comparativas
+                    </button>
+                    <button onclick="switchAnalysisTab('insights')" id="analysis-tab-insights" 
+                            class="btn btn-sm" 
+                            style="border-radius: 8px 8px 0 0; background: var(--gray-100); color: var(--gray-900); border: none; padding: 12px 24px;">
+                        💡 Insights
+                    </button>
+                </div>
+
+                <!-- Analysis Content -->
+                <div id="analysis-content">
+                    <!-- Populated dynamically based on selected tab -->
+                </div>
+            </div>
         </main>
     </div>
 
@@ -1187,7 +1275,8 @@
                 { id: 'rule-5', containsText: 'gasolina', categoryId: 'cat-transporte', priority: 1 },
                 { id: 'rule-6', containsText: 'shell', categoryId: 'cat-transporte', priority: 1 },
                 { id: 'rule-7', containsText: 'repsol', categoryId: 'cat-transporte', priority: 1 }
-            ]
+            ],
+            budgets: []
         };
 
         // ============================================================================
@@ -4356,6 +4445,8 @@
                     });
             }
         });
+
+        
     </script>
 </body>
 </html>
