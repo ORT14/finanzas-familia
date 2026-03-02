@@ -1193,7 +1193,7 @@
         // ============================================================================
         
         const SUPABASE_URL = 'https://jeqxgesqdffidtyfzjsl.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_FEdN1t50ywEeVYimXlviTA_NL3NRCRk';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplcXhnZXNxZGZmaWR0eWZ6anNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNDQwOTQsImV4cCI6MjA4NzgyMDA5NH0.V3Pc_X1zVn_Tow1HBQ1R-aiFxrkwmVVzZDdETSrQuVM';
        // Esperar a que window.supabase esté disponible
 let supabase = null;
 let USE_SUPABASE = false;
@@ -1221,9 +1221,7 @@ function initSupabase() {
 }
 
 // Llamar a initSupabase cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    initSupabase();
-});
+
         // ============================================================================
         // DATA MODEL & STATE MANAGEMENT
         // ============================================================================
@@ -4467,25 +4465,37 @@ document.addEventListener('DOMContentLoaded', () => {
         // INITIALIZATION
         // ============================================================================
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('Inicializando aplicación...');
-
-            // Inicializar Supabase primero
-    initSupabase();
-            // Load state FIRST (async)
-            state = await loadState();
-            console.log('Estado cargado:', state);
-            
-            initNavigation();
-            populateDashboardFilters();
-            applyDashboardFilters();
-            renderMovementsTable();
-            updateSettingsInfo();
-            
-             // Show dashboard by default
-            showView('dashboard');
-            
-            console.log('Aplicación lista');
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Inicializando aplicación...');
+    
+    // Inicializar Supabase PRIMERO
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && typeof window.supabase !== 'undefined') {
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            USE_SUPABASE = true;
+            console.log('🔧 Modo de almacenamiento: ☁️ Supabase (Cloud)');
+        } catch (error) {
+            console.error('❌ Error inicializando Supabase:', error);
+            console.log('🔧 Modo de almacenamiento: 💾 localStorage');
+        }
+    } else {
+        console.log('🔧 Modo de almacenamiento: 💾 localStorage');
+    }
+    
+    // Load state FIRST (async)
+    state = await loadState();
+    console.log('Estado cargado:', state);
+    
+    initNavigation();
+    populateDashboardFilters();
+    applyDashboardFilters();
+    renderMovementsTable();
+    updateSettingsInfo();
+    
+    // Show dashboard by default
+    showView('dashboard');
+    
+    console.log('Aplicación lista');
 
             // Register Service Worker for PWA
             if ('serviceWorker' in navigator) {
