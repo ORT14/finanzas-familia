@@ -1566,6 +1566,8 @@ var USE_SUPABASE = false;
             } else if (viewId === 'budgets') {
                 if (typeof initBudgetsView === 'function') {
                     initBudgetsView();
+                }else {
+    console.warn('⚠️ initBudgetsView no está definida aún');
                 }
             } else if (viewId === 'analysis') {
                 if (typeof initAnalysisView === 'function') {
