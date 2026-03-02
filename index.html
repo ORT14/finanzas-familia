@@ -4504,7 +4504,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (USE_SUPABASE) {
                 console.log('🔄 Activando sincronización en tiempo real...');
                 
-                supabase
+                supabaseClient
                     .channel('movements-realtime')
                     .on('postgres_changes', 
                         { event: '*', schema: 'public', table: 'movements' },
