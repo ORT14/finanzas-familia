@@ -1198,18 +1198,32 @@
 let supabase = null;
 let USE_SUPABASE = false;
 
-if (!SUPABASE_URL.includes('TU-PROJECT') && typeof window.supabase !== 'undefined') {
+// Inicializar Supabase cuando esté disponible
+function initSupabase() {
+    if (SUPABASE_URL === 'TU_PROJECT_URL_AQUI') {
+        console.log('🔧 Modo de almacenamiento: 💾 localStorage (Supabase no configurado)');
+        return;
+    }
+    
+    if (typeof window.supabase === 'undefined') {
+        console.warn('⚠️ Librería Supabase no cargada, usando localStorage');
+        return;
+    }
+    
     try {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         USE_SUPABASE = true;
         console.log('🔧 Modo de almacenamiento: ☁️ Supabase (Cloud)');
     } catch (error) {
-        console.error('Error inicializando Supabase:', error);
+        console.error('❌ Error inicializando Supabase:', error);
         console.log('🔧 Modo de almacenamiento: 💾 localStorage');
     }
-} else {
-    console.log('🔧 Modo de almacenamiento: 💾 localStorage');
 }
+
+// Llamar a initSupabase cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', () => {
+    initSupabase();
+});
         // ============================================================================
         // DATA MODEL & STATE MANAGEMENT
         // ============================================================================
@@ -4455,7 +4469,9 @@ if (!SUPABASE_URL.includes('TU-PROJECT') && typeof window.supabase !== 'undefine
 
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('Inicializando aplicación...');
-            
+
+            // Inicializar Supabase primero
+    initSupabase();
             // Load state FIRST (async)
             state = await loadState();
             console.log('Estado cargado:', state);
