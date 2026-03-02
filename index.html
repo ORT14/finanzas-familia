@@ -1316,6 +1316,10 @@
                     // Cargar reglas
                     const { data: rules, error: rulErr } = await supabase.from('rules').select('*');
                     if (rulErr) throw rulErr;
+
+                    // Cargar budgets
+                    const { data: budgets, error: budErr } = await supabase.from('budgets').select('*');
+                    if (budErr) throw budErr;
                     
                     // Si no hay datos, usar los defaults y guardarlos en Supabase
                     if (!accounts || accounts.length === 0) {
@@ -1342,7 +1346,17 @@
                         rules: localState.rules.length
                     });
                     
-                    return localState;
+                    return {
+                    localState,
+                    budgets: (budgets || []).map(b => ({
+                        id: b.id,
+                        categoryId: b.category_id,
+                        month: b.month,
+                        year: b.year,
+                        amount: parseFloat(b.amount),
+                        alertThreshold: b.alert_threshold || 80
+                    }))
+                };
                     
                 } catch (error) {
                     console.error('❌ Error cargando desde Supabase:', error);
