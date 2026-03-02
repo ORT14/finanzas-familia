@@ -1188,39 +1188,16 @@
 
     <script>
 
-         // ============================================================================
-        // SUPABASE CONFIGURATION
-        // ============================================================================
-        
-        const SUPABASE_URL = 'https://jeqxgesqdffidtyfzjsl.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplcXhnZXNxZGZmaWR0eWZ6anNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNDQwOTQsImV4cCI6MjA4NzgyMDA5NH0.V3Pc_X1zVn_Tow1HBQ1R-aiFxrkwmVVzZDdETSrQuVM';
-       // Esperar a que window.supabase esté disponible
-let supabase = null;
-let USE_SUPABASE = false;
+// ============================================================================
+// SUPABASE CONFIGURATION
+// ============================================================================
 
-// Inicializar Supabase cuando esté disponible
-function initSupabase() {
-    if (SUPABASE_URL === 'TU_PROJECT_URL_AQUI') {
-        console.log('🔧 Modo de almacenamiento: 💾 localStorage (Supabase no configurado)');
-        return;
-    }
-    
-    if (typeof window.supabase === 'undefined') {
-        console.warn('⚠️ Librería Supabase no cargada, usando localStorage');
-        return;
-    }
-    
-    try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        USE_SUPABASE = true;
-        console.log('🔧 Modo de almacenamiento: ☁️ Supabase (Cloud)');
-    } catch (error) {
-        console.error('❌ Error inicializando Supabase:', error);
-        console.log('🔧 Modo de almacenamiento: 💾 localStorage');
-    }
-}
+const SUPABASE_URL = 'https://jeqxgesqdffidtyfzjsl.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplcXhnZXNxZGZmaWR0eWZ6anNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNDQwOTQsImV4cCI6MjA4NzgyMDA5NH0.V3Pc_X1zVn_Tow1HBQ1R-aiFxrkwmVVzZDdETSrQuVM';
 
-// Llamar a initSupabase cuando el DOM esté listo
+// Usar un nombre diferente para evitar conflicto con window.supabase
+var supabaseClient = null;
+var USE_SUPABASE = false;
 
         // ============================================================================
         // DATA MODEL & STATE MANAGEMENT
@@ -1334,27 +1311,27 @@ function initSupabase() {
                 console.log('📥 Cargando datos desde Supabase...');
                 try {
                     // Cargar cuentas
-                    const { data: accounts, error: accErr } = await supabaseClient.from('accounts').select('*');
+                    const { data: accounts, error: accErr } = await supabaseClientClient.from('accounts').select('*');
                     if (accErr) throw accErr;
                     
                     // Cargar categorías
-                    const { data: categories, error: catErr } = await supabaseClient.from('categories').select('*');
+                    const { data: categories, error: catErr } = await supabaseClientClient.from('categories').select('*');
                     if (catErr) throw catErr;
                     
                     // Cargar movimientos
-                    const { data: movements, error: movErr } = await supabaseClient.from('movements').select('*').order('date', { ascending: false });
+                    const { data: movements, error: movErr } = await supabaseClientClient.from('movements').select('*').order('date', { ascending: false });
                     if (movErr) throw movErr;
                     
                     // Cargar plantillas
-                    const { data: templates, error: tmpErr } = await supabaseClient.from('templates').select('*');
+                    const { data: templates, error: tmpErr } = await supabaseClientClient.from('templates').select('*');
                     if (tmpErr) throw tmpErr;
                     
                     // Cargar reglas
-                    const { data: rules, error: rulErr } = await supabaseClient.from('rules').select('*');
+                    const { data: rules, error: rulErr } = await supabaseClientClient.from('rules').select('*');
                     if (rulErr) throw rulErr;
 
                     // Cargar budgets
-                    const { data: budgets, error: budErr } = await supabaseClient.from('budgets').select('*');
+                    const { data: budgets, error: budErr } = await supabaseClientClient.from('budgets').select('*');
                     if (budErr) throw budErr;
                     
                     // Si no hay datos, usar los defaults y guardarlos en Supabase
@@ -1437,10 +1414,10 @@ function initSupabase() {
             console.log('💾 Guardando datos iniciales en Supabase...');
             
             try {
-                await supabaseClient.from('accounts').insert(DEFAULT_STATE.accounts);
-                await supabaseClient.from('categories').insert(DEFAULT_STATE.categories);
-                await supabaseClient.from('templates').insert(DEFAULT_STATE.templates);
-                await supabaseClient.from('rules').insert(DEFAULT_STATE.rules);
+                await supabaseClientClient.from('accounts').insert(DEFAULT_STATE.accounts);
+                await supabaseClientClient.from('categories').insert(DEFAULT_STATE.categories);
+                await supabaseClientClient.from('templates').insert(DEFAULT_STATE.templates);
+                await supabaseClientClient.from('rules').insert(DEFAULT_STATE.rules);
                 console.log('✅ Datos iniciales guardados en Supabase');
             } catch (error) {
                 console.error('❌ Error guardando datos iniciales:', error);
@@ -2127,7 +2104,7 @@ function initSupabase() {
             // Si estamos usando Supabase
             if (USE_SUPABASE) {
                 try {
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('movements')
                         .delete()
                         .eq('id', id);
@@ -4420,7 +4397,7 @@ function initSupabase() {
             try {
                 if (id) {
                     // Actualizar existente
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('movements')
                         .update(movement)
                         .eq('id', id);
@@ -4436,7 +4413,7 @@ function initSupabase() {
                     console.log('✅ Movimiento actualizado en Supabase');
                 } else {
                     // Crear nuevo
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('movements')
                         .insert([movement]);
                     
@@ -4468,10 +4445,10 @@ function initSupabase() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Inicializando aplicación...');
     
-    // Inicializar Supabase PRIMERO
-    if (SUPABASE_URL && SUPABASE_ANON_KEY && typeof window.supabase !== 'undefined') {
+    // Inicializar Supabase
+    if (typeof window.supabase !== 'undefined') {
         try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             USE_SUPABASE = true;
             console.log('🔧 Modo de almacenamiento: ☁️ Supabase (Cloud)');
         } catch (error) {
@@ -4621,7 +4598,7 @@ async function renderBudgets() {
     // Cargar budgets del mes/año seleccionado
     let budgets = [];
     if (USE_SUPABASE) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('budgets')
             .select('*')
             .eq('month', month)
@@ -4837,7 +4814,7 @@ async function saveBudget(budget) {
             alert_threshold: budget.alertThreshold || 80
         };
         
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('budgets')
             .upsert([supabaseBudget]);
         
@@ -4864,7 +4841,7 @@ async function deleteBudget(id) {
     if (!confirm('¿Eliminar este presupuesto?')) return;
     
     if (USE_SUPABASE) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('budgets')
             .delete()
             .eq('id', id);
