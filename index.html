@@ -1463,14 +1463,42 @@
         // ============================================================================
 
         function initNavigation() {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const viewId = item.dataset.view;
-                    showView(viewId);
-                });
-            });
-        }
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const view = item.getAttribute('data-view');
+            
+            // Update active state
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            // Hide all views
+            document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+            
+            // Show selected view
+            const viewElement = document.getElementById(`view-${view}`);
+            if (viewElement) {
+                viewElement.style.display = 'block';
+                currentView = view;
+                
+                // Initialize view-specific content
+                if (view === 'dashboard') {
+                    applyDashboardFilters();
+                } else if (view === 'movements') {
+                    renderMovementsTable();
+                } else if (view === 'categories') {
+                    renderCategoriesList();
+                } else if (view === 'budgets') {
+                    initBudgetsView();  // ← NUEVO
+                } else if (view === 'analysis') {
+                    initAnalysisView();  // ← NUEVO
+                } else if (view === 'settings') {
+                    updateSettingsInfo();
+                }
+            }
+        });
+    });
+}
 
         function showView(viewId) {
             // Update nav active state
