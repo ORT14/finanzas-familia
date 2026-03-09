@@ -523,6 +523,120 @@
             font-weight: 600;
             margin-left: 8px;
         }
+
+        /* ============================================================================ */
+/* ESTILOS PARA REPARTO DE GASTOS */
+/* ============================================================================ */
+
+/* Tarjetas de resumen de reparto */
+.split-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.split-card {
+    background: white;
+    border: 2px solid var(--gray-300);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.split-card h4 {
+    margin: 0 0 15px 0;
+    font-size: 1.2em;
+    color: var(--primary-color);
+}
+
+.income-info {
+    color: var(--gray-600);
+    font-size: 0.9em;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.split-amount {
+    margin: 10px 0;
+    font-size: 1.1em;
+}
+
+.split-amount.should-pay {
+    color: var(--gray-700);
+}
+
+.split-amount.has-paid {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.split-balance {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid var(--gray-200);
+    font-size: 1.3em;
+    font-weight: 700;
+}
+
+.balance-card {
+    border-width: 3px;
+}
+
+.total-shared {
+    color: var(--gray-700);
+    font-size: 1.1em;
+    margin-bottom: 10px;
+}
+
+.final-balance {
+    font-weight: 700;
+}
+
+/* Grid de categorías compartidas */
+.shared-categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+}
+
+.shared-category-item {
+    padding: 8px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.checkbox-label span {
+    font-size: 0.95em;
+}
+
+/* Select de "Pagado por" */
+.paid-by-select {
+    font-size: 0.9em;
+    background: white;
+}
+
+.paid-by-select:focus {
+    outline: 2px solid var(--primary-color);
+}
     </style>
 </head>
 <body>
@@ -553,6 +667,11 @@
                     <span class="nav-item-icon">🏷️</span>
                     Categorías
                 </a>
+                <a class="nav-item" data-view="split"> 
+                    <span class="nav-item-icon">👥</span>
+                    Reparto
+                </a>
+                
                 <a class="nav-item" data-view="settings">
                     <span class="nav-item-icon">⚙️</span>
                     Importar / Ajustes
@@ -872,7 +991,42 @@
                     <div id="categories-list-container"></div>
                 </div>
             </div>
-
+<!-- Split Expenses View -->
+<div class="view" id="view-split" style="display: none;">
+    <div class="view-header">
+        <h2>👥 Reparto de Gastos</h2>
+        <p>Distribución proporcional según ingresos de cada persona</p>
+    </div>
+    
+    <!-- Selectores de mes/año -->
+    <div class="filters-bar" style="margin-bottom: 20px;">
+        <div class="filter-group">
+            <label>Mes:</label>
+            <select id="split-month-select" onchange="renderSplitExpenses()">
+                <!-- Se llena con JS -->
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Año:</label>
+            <select id="split-year-select" onchange="renderSplitExpenses()">
+                <!-- Se llena con JS -->
+            </select>
+        </div>
+    </div>
+    
+    <!-- Resumen de reparto -->
+    <div id="split-summary">
+        <!-- Se llena con JS -->
+    </div>
+    
+    <!-- Desglose por categoría -->
+    <div style="margin-top: 30px;">
+        <h3>Desglose por Categoría</h3>
+        <div id="split-breakdown">
+            <!-- Se llena con JS -->
+        </div>
+    </div>
+</div>
             <!-- Settings View -->
             <div class="view" id="view-settings">
                 <div class="view-header">
@@ -1167,6 +1321,34 @@
         </div>
     </div>
 
+       <div class="settings-section">
+        <h3>👥 Configuración de Reparto de Gastos</h3>
+        
+        <div class="settings-item">
+            <div>
+                <strong>💰 Ingresos Mensuales</strong>
+                <p style="color: var(--gray-600); font-size: 0.9em; margin: 5px 0 0 0;">
+                    Define los ingresos de cada persona para calcular el reparto proporcional
+                </p>
+            </div>
+            <button class="btn btn-primary" onclick="showIncomeSettingsModal()">
+                Configurar Ingresos
+            </button>
+        </div>
+        
+        <div class="settings-item">
+            <div>
+                <strong>📁 Categorías Compartidas</strong>
+                <p style="color: var(--gray-600); font-size: 0.9em; margin: 5px 0 0 0;">
+                    Marca qué categorías son gastos comunes que deben repartirse
+                </p>
+            </div>
+            <button class="btn btn-primary" onclick="showSharedCategoriesModal()">
+                Gestionar Categorías
+            </button>
+        </div>
+    </div>
+
     <!-- Pending Review Modal -->
     <div class="modal" id="pending-modal">
         <div class="modal-content" style="max-width: 800px;">
@@ -1185,6 +1367,108 @@
             </div>
         </div>
     </div>
+    <!-- Income Settings Modal -->
+<div class="modal" id="income-settings-modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 class="modal-title">💰 Configuración de Ingresos</h3>
+        </div>
+        
+        <div style="padding: 20px;">
+            <p style="color: var(--gray-600); margin-bottom: 20px;">
+                Define los ingresos mensuales de cada persona. El sistema calculará automáticamente
+                la proporción que debe pagar cada uno de los gastos compartidos.
+            </p>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">
+                    👨 Ingreso mensual de Oriol (€)
+                </label>
+                <input 
+                    type="number" 
+                    id="oriol-income" 
+                    class="form-control" 
+                    placeholder="3000"
+                    min="0"
+                    step="0.01"
+                    oninput="updateIncomePercentages()"
+                >
+                <div id="oriol-percentage" style="color: var(--gray-600); font-size: 0.9em; margin-top: 5px;">
+                    50%
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">
+                    👩 Ingreso mensual de Paula (€)
+                </label>
+                <input 
+                    type="number" 
+                    id="paula-income" 
+                    class="form-control" 
+                    placeholder="2000"
+                    min="0"
+                    step="0.01"
+                    oninput="updateIncomePercentages()"
+                >
+                <div id="paula-percentage" style="color: var(--gray-600); font-size: 0.9em; margin-top: 5px;">
+                    50%
+                </div>
+            </div>
+            
+            <div style="background: var(--gray-100); padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <strong>ℹ️ Ejemplo:</strong>
+                <p style="margin: 10px 0 0 0; color: var(--gray-600); font-size: 0.9em;">
+                    Si Oriol gana 3,000€ y Paula gana 2,000€ (total 5,000€), Oriol pagará el 60% 
+                    de los gastos compartidos y Paula el 40%.
+                </p>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeIncomeSettingsModal()">
+                Cancelar
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveIncomeSettingsFromModal()">
+                Guardar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Shared Categories Modal -->
+<div class="modal" id="shared-categories-modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 class="modal-title">📁 Categorías Compartidas</h3>
+        </div>
+        
+        <div style="padding: 20px;">
+            <p style="color: var(--gray-600); margin-bottom: 20px;">
+                Marca las categorías que representan gastos compartidos entre ambos.
+                Estos gastos se dividirán proporcionalmente según los ingresos configurados.
+            </p>
+            
+            <div id="shared-categories-list">
+                <!-- Se llena con JS -->
+            </div>
+            
+            <div style="background: var(--gray-100); padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <strong>💡 Consejo:</strong>
+                <p style="margin: 10px 0 0 0; color: var(--gray-600); font-size: 0.9em;">
+                    Marca como compartidas: Alquiler, Supermercado, Servicios (luz, agua, internet), etc.
+                    Deja sin marcar: Ropa personal, hobbies individuales, gastos personales.
+                </p>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="closeSharedCategoriesModal()">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
 
     <script>
 
@@ -1215,9 +1499,9 @@ var USE_SUPABASE = false;
                 { id: 'cuenta-lucas', name: 'Cuenta Lucas', type: 'personal', users: ['Lucas'] }
             ],
             categories: [
-                { id: 'sin-categorizar', name: 'Sin categorizar', type: 'expense', parent: null, needsReview: false, subcategories: [] }
+                 { id: 'sin-categorizar', name: 'Sin categorizar', type: 'expense', parent: null, needsReview: false, subcategories: [], shared: false }
             ],
-            movements: [],
+            movements: [], // Cada movement tendrá ahora: { ...campos existentes, paidBy: 'Oriol'|'Paula'|'Ambos'|null }
             templates: [
                 {
                     id: 'tpl-oriol-lucas',
@@ -1333,6 +1617,24 @@ var USE_SUPABASE = false;
                     // Cargar budgets
                     const { data: budgets, error: budErr } = await supabaseClient.from('budgets').select('*');
                     if (budErr) throw budErr;
+
+                    let incomeSettings = { oriol: 0, paula: 0 };
+                    if (USE_SUPABASE && supabaseClient) {
+                        try {
+                            const { data: incomeData, error: incErr } = await supabaseClient
+                                .from('income_settings')
+                                .select('*');
+                            
+                            if (!incErr && incomeData) {
+                                incomeSettings = {
+                                    oriol: incomeData.find(d => d.person_name === 'Oriol')?.monthly_income || 0,
+                                    paula: incomeData.find(d => d.person_name === 'Paula')?.monthly_income || 0
+                                };
+                            }
+                        } catch (error) {
+                            console.error('Error cargando income_settings:', error);
+                        }
+                    }
                     
                     // Si no hay datos, usar los defaults y guardarlos en Supabase
                     if (!accounts || accounts.length === 0) {
@@ -1373,7 +1675,8 @@ var USE_SUPABASE = false;
                             year: b.year,
                             amount: parseFloat(b.amount),
                             alertThreshold: b.alert_threshold || 80
-                        }))
+                        })),
+                        incomeSettings: incomeSettings 
                     };
                     
                 } catch (error) {
@@ -4345,7 +4648,8 @@ var USE_SUPABASE = false;
                 toAccountId: supabaseObj.to_account_id,
                 categoryId: supabaseObj.category_id,
                 subcategoryId: supabaseObj.subcategory_id,
-                notes: supabaseObj.notes || ''
+                notes: supabaseObj.notes || '',
+                paidBy: supabaseObj.paid_by || null 
             };
         }
 
