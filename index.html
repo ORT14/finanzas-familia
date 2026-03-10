@@ -1872,10 +1872,18 @@ var USE_SUPABASE = false;
                 }else {
     console.warn('⚠️ initBudgetsView no está definida aún');
                 }
-            } else if (viewId === 'analysis') {
-                if (typeof initAnalysisView === 'function') {
-                    initAnalysisView();
-                }
+           } else if (view === 'analysis') {
+                    if (typeof initAnalysisView === 'function') {
+                        initAnalysisView();
+                    } else {
+                        console.warn('⚠️ initAnalysisView no está definida aún');
+                    }
+                } else if (view === 'split') {
+                    if (typeof initSplitExpensesView === 'function') {
+                        initSplitExpensesView();
+                    } else {
+                        console.warn('⚠️ initSplitExpensesView no está definida aún');
+                    }
             } else if (viewId === 'settings') {
                 updateSettingsInfo();
             }
@@ -2094,8 +2102,19 @@ var USE_SUPABASE = false;
                         </td>
                         <td style="font-size: 12px; color: var(--gray-600);">${method}</td>
                         <td style="font-size: 13px;">${person}</td>
+                        <td>
+                            <select 
+                                class="paid-by-select" 
+                                onchange="updateMovementPaidBy('${mov.id}', this.value)"
+                                style="padding: 4px 8px; border: 1px solid var(--gray-300); border-radius: 4px; font-size: 0.9em;">
+                                <option value="" ${!mov.paidBy ? 'selected' : ''}>-</option>
+                                <option value="Oriol" ${mov.paidBy === 'Oriol' ? 'selected' : ''}>👨 Oriol</option>
+                                <option value="Paula" ${mov.paidBy === 'Paula' ? 'selected' : ''}>👩 Paula</option>
+                                <option value="Ambos" ${mov.paidBy === 'Ambos' ? 'selected' : ''}>👥 Ambos</option>
+                            </select>
+                        </td>
                         <td style="white-space: nowrap;">
-                            <button class="btn btn-sm" style="background: var(--primary-light); color: white;" 
+                            <button class="btn btn-sm" style="background: var(--primary-light); color: white;"
                                     onclick="editMovement('${mov.id}')" title="Editar">✏️</button>
                             <button class="btn btn-sm" style="background: var(--warning); color: white;" 
                                     onclick="duplicateMovement('${mov.id}')" title="Duplicar">📋</button>
@@ -2138,6 +2157,7 @@ var USE_SUPABASE = false;
                                 <th style="text-align: right;">Importe (€)</th>
                                 <th>Método</th>
                                 <th>Persona</th>
+                                <th>Pagado por</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -5548,7 +5568,500 @@ function initAnalysisView() {
 }
 
 console.log('✅ Módulo de Presupuestos y Análisis cargado');
+// ============================================================================
+// SISTEMA DE REPARTO PROPORCIONAL DE GASTOS
+// ============================================================================
 
+// ============================================================================
+// CONFIGURACIÓN DE INGRESOS
+// ============================================================================
+
+/**
+ * Cargar configuración de ingresos desde Supabase o localStorage
+ */
+async function loadIncomeSettings() {
+    if (USE_SUPABASE && supabaseClient) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('income_settings')
+                .select('*');
+            
+            if (error) throw error;
+            
+            const settings = {
+                oriol: data.find(d => d.person_name === 'Oriol')?.monthly_income || 0,
+                paula: data.find(d => d.person_name === 'Paula')?.monthly_income || 0
+            };
+            
+            return settings;
+        } catch (error) {
+            console.error('Error cargando ingresos:', error);
+        }
+    }
+    
+    // Fallback a localStorage
+    const stored = localStorage.getItem('income_settings');
+    return stored ? JSON.parse(stored) : { oriol: 0, paula: 0 };
+}
+
+/**
+ * Guardar configuración de ingresos
+ */
+async function saveIncomeSettings(oriolIncome, paulaIncome) {
+    const settings = {
+        oriol: parseFloat(oriolIncome) || 0,
+        paula: parseFloat(paulaIncome) || 0
+    };
+    
+    if (USE_SUPABASE && supabaseClient) {
+        try {
+            // Actualizar Oriol
+            await supabaseClient
+                .from('income_settings')
+                .upsert({
+                    id: 'income-oriol',
+                    person_name: 'Oriol',
+                    monthly_income: settings.oriol
+                });
+            
+            // Actualizar Paula
+            await supabaseClient
+                .from('income_settings')
+                .upsert({
+                    id: 'income-paula',
+                    person_name: 'Paula',
+                    monthly_income: settings.paula
+                });
+            
+            console.log('✅ Ingresos guardados en Supabase');
+        } catch (error) {
+            console.error('Error guardando ingresos:', error);
+        }
+    }
+    
+    // Guardar también en localStorage
+    localStorage.setItem('income_settings', JSON.stringify(settings));
+    
+    // Recalcular porcentajes
+    updateIncomePercentages();
+}
+
+/**
+ * Calcular porcentajes de contribución
+ */
+function calculateSplitPercentages(oriolIncome, paulaIncome) {
+    const total = parseFloat(oriolIncome) + parseFloat(paulaIncome);
+    
+    if (total === 0) {
+        return { oriol: 50, paula: 50 }; // 50/50 por defecto
+    }
+    
+    return {
+        oriol: Math.round((oriolIncome / total) * 100),
+        paula: Math.round((paulaIncome / total) * 100)
+    };
+}
+
+/**
+ * Actualizar la UI con los porcentajes calculados
+ */
+async function updateIncomePercentages() {
+    const oriolInput = document.getElementById('oriol-income');
+    const paulaInput = document.getElementById('paula-income');
+    
+    const oriolIncome = parseFloat(oriolInput?.value || 0);
+    const paulaIncome = parseFloat(paulaInput?.value || 0);
+    
+    const percentages = calculateSplitPercentages(oriolIncome, paulaIncome);
+    
+    const oriolPctEl = document.getElementById('oriol-percentage');
+    const paulaPctEl = document.getElementById('paula-percentage');
+    
+    if (oriolPctEl) oriolPctEl.textContent = `${percentages.oriol}%`;
+    if (paulaPctEl) paulaPctEl.textContent = `${percentages.paula}%`;
+    
+    return percentages;
+}
+
+// ============================================================================
+// GESTIÓN DE CATEGORÍAS COMPARTIDAS
+// ============================================================================
+
+/**
+ * Marcar/desmarcar categoría como compartida
+ */
+async function toggleSharedCategory(categoryId, isShared) {
+    // Actualizar en state local
+    const category = state.categories.find(c => c.id === categoryId);
+    if (category) {
+        category.shared = isShared;
+    }
+    
+    // Actualizar en Supabase
+    if (USE_SUPABASE && supabaseClient) {
+        try {
+            await supabaseClient
+                .from('categories')
+                .update({ shared: isShared })
+                .eq('id', categoryId);
+            
+            console.log(`✅ Categoría ${categoryId} marcada como ${isShared ? 'compartida' : 'personal'}`);
+        } catch (error) {
+            console.error('Error actualizando categoría:', error);
+        }
+    }
+    
+    // Guardar en localStorage
+    await saveState();
+}
+
+/**
+ * Renderizar lista de categorías con checkbox de "compartida"
+ */
+function renderSharedCategoriesConfig() {
+    const container = document.getElementById('shared-categories-list');
+    if (!container) return;
+    
+    const expenseCategories = state.categories.filter(c => c.type === 'expense' && c.id !== 'sin-categorizar');
+    
+    let html = '<div class="shared-categories-grid">';
+    
+    expenseCategories.forEach(cat => {
+        const isShared = cat.shared || false;
+        
+        html += `
+            <div class="shared-category-item">
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
+                        ${isShared ? 'checked' : ''}
+                        onchange="toggleSharedCategory('${cat.id}', this.checked)"
+                    >
+                    <span>${cat.icon || '📁'} ${cat.name}</span>
+                </label>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// ============================================================================
+// VISTA DE REPARTO DE GASTOS
+// ============================================================================
+
+/**
+ * Inicializar vista de reparto de gastos
+ */
+async function initSplitExpensesView() {
+    await populateSplitMonthSelector();
+    await renderSplitExpenses();
+}
+
+/**
+ * Poblar selector de mes
+ */
+async function populateSplitMonthSelector() {
+    const monthSelect = document.getElementById('split-month-select');
+    const yearSelect = document.getElementById('split-year-select');
+    
+    if (!monthSelect || !yearSelect) return;
+    
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    
+    // Poblar meses
+    monthSelect.innerHTML = '';
+    for (let i = 1; i <= 12; i++) {
+        const monthName = new Date(2000, i - 1, 1).toLocaleDateString('es-ES', { month: 'long' });
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+        if (i === currentMonth) option.selected = true;
+        monthSelect.appendChild(option);
+    }
+    
+    // Poblar años
+    yearSelect.innerHTML = '';
+    for (let year = currentYear - 2; year <= currentYear + 1; year++) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        if (year === currentYear) option.selected = true;
+        yearSelect.appendChild(option);
+    }
+}
+
+/**
+ * Renderizar resumen de reparto de gastos
+ */
+async function renderSplitExpenses() {
+    const month = parseInt(document.getElementById('split-month-select')?.value || new Date().getMonth() + 1);
+    const year = parseInt(document.getElementById('split-year-select')?.value || new Date().getFullYear());
+    
+    // Cargar configuración de ingresos
+    const settings = await loadIncomeSettings();
+    const percentages = calculateSplitPercentages(settings.oriol, settings.paula);
+    
+    // Filtrar movimientos del mes seleccionado
+    const monthMovements = state.movements.filter(m => {
+        const date = new Date(m.date);
+        return date.getMonth() + 1 === month && date.getFullYear() === year && m.type === 'expense';
+    });
+    
+    // Separar gastos compartidos y personales
+    const sharedExpenses = [];
+    const oriolPersonal = [];
+    const paulaPersonal = [];
+    
+    monthMovements.forEach(m => {
+        const category = state.categories.find(c => c.id === m.categoryId);
+        const isShared = category?.shared || false;
+        
+        if (isShared) {
+            sharedExpenses.push(m);
+        } else {
+            if (m.paidBy === 'Oriol') {
+                oriolPersonal.push(m);
+            } else if (m.paidBy === 'Paula') {
+                paulaPersonal.push(m);
+            }
+        }
+    });
+    
+    // Calcular totales
+    const sharedTotal = sharedExpenses.reduce((sum, m) => sum + m.amount, 0);
+    const oriolShouldPay = sharedTotal * (percentages.oriol / 100);
+    const paulaShouldPay = sharedTotal * (percentages.paula / 100);
+    
+    // Calcular quién ha pagado qué (solo gastos compartidos)
+    const oriolPaidShared = sharedExpenses.filter(m => m.paidBy === 'Oriol').reduce((sum, m) => sum + m.amount, 0);
+    const paulaPaidShared = sharedExpenses.filter(m => m.paidBy === 'Paula').reduce((sum, m) => sum + m.amount, 0);
+    
+    // Calcular balance
+    const oriolBalance = oriolPaidShared - oriolShouldPay;
+    const paulaBalance = paulaPaidShared - paulaShouldPay;
+    
+    // Renderizar resumen
+    renderSplitSummary(settings, percentages, sharedTotal, oriolShouldPay, paulaShouldPay, oriolPaidShared, paulaPaidShared, oriolBalance, paulaBalance);
+    
+    // Renderizar desglose por categoría
+    renderSplitBreakdown(sharedExpenses, percentages);
+}
+
+/**
+ * Renderizar tarjetas de resumen
+ */
+function renderSplitSummary(settings, percentages, sharedTotal, oriolShouldPay, paulaShouldPay, oriolPaid, paulaPaid, oriolBalance, paulaBalance) {
+    const container = document.getElementById('split-summary');
+    if (!container) return;
+    
+    const balance = oriolBalance + paulaBalance;
+    const balanceText = balance > 0.01
+        ? `Paula debe ${Math.abs(balance).toFixed(2)}€ a Oriol`
+        : balance < -0.01
+        ? `Oriol debe ${Math.abs(balance).toFixed(2)}€ a Paula`
+        : 'Equilibrados ✅';
+    
+    const balanceColor = balance > 0.01 ? '#27ae60' : balance < -0.01 ? '#e74c3c' : '#95a5a6';
+    
+    container.innerHTML = `
+        <div class="split-cards">
+            <div class="split-card">
+                <h4>👨 Oriol</h4>
+                <div class="income-info">Ingreso: ${settings.oriol.toFixed(2)}€ (${percentages.oriol}%)</div>
+                <div class="split-amount should-pay">Debe pagar: ${oriolShouldPay.toFixed(2)}€</div>
+                <div class="split-amount has-paid">Ha pagado: ${oriolPaid.toFixed(2)}€</div>
+                <div class="split-balance" style="color: ${oriolBalance >= 0 ? '#27ae60' : '#e74c3c'}">
+                    ${oriolBalance >= 0 ? '+' : ''}${oriolBalance.toFixed(2)}€
+                </div>
+            </div>
+            
+            <div class="split-card">
+                <h4>👩 Paula</h4>
+                <div class="income-info">Ingreso: ${settings.paula.toFixed(2)}€ (${percentages.paula}%)</div>
+                <div class="split-amount should-pay">Debe pagar: ${paulaShouldPay.toFixed(2)}€</div>
+                <div class="split-amount has-paid">Ha pagado: ${paulaPaid.toFixed(2)}€</div>
+                <div class="split-balance" style="color: ${paulaBalance >= 0 ? '#27ae60' : '#e74c3c'}">
+                    ${paulaBalance >= 0 ? '+' : ''}${paulaBalance.toFixed(2)}€
+                </div>
+            </div>
+            
+            <div class="split-card balance-card" style="border-color: ${balanceColor}">
+                <h4>💰 Balance Final</h4>
+                <div class="total-shared">Gastos comunes: ${sharedTotal.toFixed(2)}€</div>
+                <div class="final-balance" style="color: ${balanceColor}; font-size: 1.3em; margin-top: 10px;">
+                    ${balanceText}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Renderizar desglose por categoría
+ */
+function renderSplitBreakdown(sharedExpenses, percentages) {
+    const container = document.getElementById('split-breakdown');
+    if (!container) return;
+    
+    // Agrupar por categoría
+    const byCategory = {};
+    
+    sharedExpenses.forEach(m => {
+        const category = state.categories.find(c => c.id === m.categoryId);
+        const catName = category ? `${category.icon || '📁'} ${category.name}` : 'Sin categoría';
+        
+        if (!byCategory[catName]) {
+            byCategory[catName] = { total: 0, movements: [] };
+        }
+        
+        byCategory[catName].total += m.amount;
+        byCategory[catName].movements.push(m);
+    });
+    
+    // Renderizar tabla
+    let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Categoría</th>
+                    <th>Total</th>
+                    <th>👨 Oriol (${percentages.oriol}%)</th>
+                    <th>👩 Paula (${percentages.paula}%)</th>
+                    <th>Movimientos</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    Object.entries(byCategory)
+        .sort((a, b) => b[1].total - a[1].total)
+        .forEach(([catName, data]) => {
+            const oriolAmount = data.total * (percentages.oriol / 100);
+            const paulaAmount = data.total * (percentages.paula / 100);
+            
+            html += `
+                <tr>
+                    <td><strong>${catName}</strong></td>
+                    <td><strong>${data.total.toFixed(2)}€</strong></td>
+                    <td>${oriolAmount.toFixed(2)}€</td>
+                    <td>${paulaAmount.toFixed(2)}€</td>
+                    <td>${data.movements.length}</td>
+                </tr>
+            `;
+        });
+    
+    if (Object.keys(byCategory).length === 0) {
+        html += `
+            <tr>
+                <td colspan="5" style="text-align: center; color: var(--gray-500); padding: 40px;">
+                    No hay gastos compartidos este mes
+                </td>
+            </tr>
+        `;
+    }
+    
+    html += `
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// ============================================================================
+// CONFIGURACIÓN EN AJUSTES
+// ============================================================================
+
+/**
+ * Mostrar modal de configuración de ingresos
+ */
+async function showIncomeSettingsModal() {
+    const settings = await loadIncomeSettings();
+    
+    const modal = document.getElementById('income-settings-modal');
+    if (!modal) return;
+    
+    document.getElementById('oriol-income').value = settings.oriol;
+    document.getElementById('paula-income').value = settings.paula;
+    
+    modal.style.display = 'flex';
+    
+    // Actualizar porcentajes en tiempo real
+    await updateIncomePercentages();
+}
+
+/**
+ * Guardar configuración de ingresos desde el modal
+ */
+async function saveIncomeSettingsFromModal() {
+    const oriolIncome = document.getElementById('oriol-income').value;
+    const paulaIncome = document.getElementById('paula-income').value;
+    
+    await saveIncomeSettings(oriolIncome, paulaIncome);
+    
+    closeIncomeSettingsModal();
+    
+    alert('✅ Configuración de ingresos guardada');
+}
+
+/**
+ * Cerrar modal de ingresos
+ */
+function closeIncomeSettingsModal() {
+    const modal = document.getElementById('income-settings-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Mostrar modal de configuración de categorías compartidas
+ */
+function showSharedCategoriesModal() {
+    const modal = document.getElementById('shared-categories-modal');
+    if (!modal) return;
+    
+    renderSharedCategoriesConfig();
+    modal.style.display = 'flex';
+}
+
+/**
+ * Cerrar modal de categorías compartidas
+ */
+function closeSharedCategoriesModal() {
+    const modal = document.getElementById('shared-categories-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Actualizar quién pagó un movimiento
+ */
+async function updateMovementPaidBy(movementId, paidBy) {
+    // Actualizar en state
+    const movement = state.movements.find(m => m.id === movementId);
+    if (movement) {
+        movement.paidBy = paidBy || null;
+    }
+    
+    // Actualizar en Supabase
+    if (USE_SUPABASE && supabaseClient) {
+        try {
+            await supabaseClient
+                .from('movements')
+                .update({ paid_by: paidBy || null })
+                .eq('id', movementId);
+            
+            console.log(`✅ Actualizado paidBy: ${paidBy}`);
+        } catch (error) {
+            console.error('Error actualizando paid_by:', error);
+        }
+    }
+    
+    // Guardar en localStorage
+    await saveState();
+}
         
     </script>
 </body>
