@@ -1295,8 +1295,30 @@
 
                 <div class="form-group">
                     <label class="form-label" for="movement-category">Categoría</label>
-                    <select class="form-control" id="movement-category">
+                    <select class="form-control" id="movement-category" onchange="updateSubcategoryOptions()">
                         <option value="">Sin categorizar</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="subcategory-field" style="display: none;">
+                    <label class="form-label" for="movement-subcategory">Subcategoría</label>
+                    <select class="form-control" id="movement-subcategory">
+                        <option value="">Sin subcategoría</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="movement-notes">Notas</label>
+                    <textarea class="form-control" id="movement-notes" rows="2"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="movement-paid-by">Pagado por</label>
+                    <select class="form-control" id="movement-paid-by">
+                        <option value="">-</option>
+                        <option value="Oriol">👨 Oriol</option>
+                        <option value="Paula">👩 Paula</option>
+                        <option value="Ambos">👥 Ambos</option>
                     </select>
                 </div>
 
@@ -2245,6 +2267,24 @@ var USE_SUPABASE = false;
             
             document.getElementById('movement-category').value = movement.categoryId || '';
             
+            // Actualizar subcategorías y seleccionar la correcta
+            updateSubcategoryOptions();
+            if (movement.subcategoryId) {
+                document.getElementById('movement-subcategory').value = movement.subcategoryId;
+            }
+            
+            // Cargar paid_by si existe
+            const paidBySelect = document.getElementById('movement-paid-by');
+            if (paidBySelect && movement.paidBy) {
+                paidBySelect.value = movement.paidBy;
+            }
+            
+            // Cargar notas si existen
+            const notesField = document.getElementById('movement-notes');
+            if (notesField && movement.notes) {
+                notesField.value = movement.notes;
+            }
+            
             updateMovementTypeFields();
             document.getElementById('movement-modal').classList.add('show');
         }
@@ -2320,6 +2360,40 @@ var USE_SUPABASE = false;
             });
 
             if (currentValue) select.value = currentValue;
+        }
+
+        function updateSubcategoryOptions() {
+            const categorySelect = document.getElementById('movement-category');
+            const subcategoryField = document.getElementById('subcategory-field');
+            const subcategorySelect = document.getElementById('movement-subcategory');
+            
+            const categoryId = categorySelect.value;
+            
+            // Limpiar opciones anteriores
+            subcategorySelect.innerHTML = '<option value="">Sin subcategoría</option>';
+            
+            if (!categoryId || categoryId === 'sin-categorizar') {
+                subcategoryField.style.display = 'none';
+                return;
+            }
+            
+            // Buscar la categoría seleccionada
+            const category = state.categories.find(c => c.id === categoryId);
+            
+            if (!category || !category.subcategories || category.subcategories.length === 0) {
+                subcategoryField.style.display = 'none';
+                return;
+            }
+            
+            // Mostrar el campo y poblar subcategorías
+            subcategoryField.style.display = 'block';
+            
+            category.subcategories.forEach(subcat => {
+                const option = document.createElement('option');
+                option.value = subcat.id;
+                option.textContent = subcat.name;
+                subcategorySelect.appendChild(option);
+            });
         }
 
         async function saveMovement(event) {
