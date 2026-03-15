@@ -2552,7 +2552,7 @@ var USE_SUPABASE = false;
                     const categoriesResult = importCategoriesFromExcel(workbook);
                     
                     // Import movements
-                    const movementsResult = importMovementsFromExcel(workbook);
+                    const movementsResult = await importMovementsFromExcel(workbook);
 
                     // Show summary
                     showImportSummary(categoriesResult, movementsResult);
@@ -2672,7 +2672,7 @@ var USE_SUPABASE = false;
             return { imported, created, existing };
         }
 
-        function importMovementsFromExcel(workbook, defaultAccountId = null) {
+        async function importMovementsFromExcel(workbook, defaultAccountId = null) {
             const sheetName = workbook.SheetNames.find(s => 
                 normalizeText(s).includes('movimiento') || normalizeText(s).includes('movimientos')
             );
@@ -2682,17 +2682,17 @@ var USE_SUPABASE = false;
                 if (workbook.SheetNames.length > 0) {
                     const firstSheet = workbook.SheetNames[0];
                     log(`⚠️ No se encontró hoja "Movimientos", usando "${firstSheet}"`);
-                    return importMovementsFromSheet(workbook, firstSheet, defaultAccountId);
+                    return await importMovementsFromSheet(workbook, firstSheet, defaultAccountId);
                 }
                 log('⚠️ No se encontró hoja "Movimientos"');
                 return { imported: 0, duplicates: 0, errors: 0 };
             }
 
             log(`📋 Procesando hoja "${sheetName}"...`);
-            return importMovementsFromSheet(workbook, sheetName, defaultAccountId);
+            return await importMovementsFromSheet(workbook, sheetName, defaultAccountId);
         }
 
-        function importMovementsFromSheet(workbook, sheetName, defaultAccountId = null) {
+        async function importMovementsFromSheet(workbook, sheetName, defaultAccountId = null) {
             const sheet = workbook.Sheets[sheetName];
             const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
@@ -2849,6 +2849,34 @@ var USE_SUPABASE = false;
                     };
 
                     state.movements.push(movement);
+                    
+                    // Guardar en Supabase si está habilitado
+                    if (USE_SUPABASE) {
+                        const supabaseMovement = {
+                            id: movement.id,
+                            type: movement.type,
+                            date: movement.date,
+                            amount: movement.amount,
+                            description: movement.description,
+                            account_id: movement.accountId,
+                            category_id: movement.categoryId,
+                            subcategory_id: movement.subcategoryId,
+                            from_account_id: movement.fromAccountId,
+                            to_account_id: movement.toAccountId,
+                            notes: movement.notes,
+                            paid_by: null,
+                            created_at: movement.createdAt
+                        };
+                        
+                        const { error } = await supabaseClient
+                            .from('movements')
+                            .insert(supabaseMovement);
+                        
+                        if (error) {
+                            console.error('Error guardando en Supabase:', error);
+                        }
+                    }
+                    
                     imported++;
 
                 } catch (error) {
@@ -2861,7 +2889,7 @@ var USE_SUPABASE = false;
             return { imported, duplicates: 0, errors };
         }
 
-        function importMovementsByPosition(data, startRow, dateIdx, descIdx, amountIdx, defaultAccountId = null) {
+        async function importMovementsByPosition(data, startRow, dateIdx, descIdx, amountIdx, defaultAccountId = null) {
             // For bank format, we need specific columns:
             // Column 1: Fecha valor (not column 0 which is Fecha)
             // Column 2: Movimiento
@@ -2925,7 +2953,36 @@ var USE_SUPABASE = false;
                         importedFrom: 'excel'
                     };
 
+                    // Guardar en state
                     state.movements.push(movement);
+                    
+                    // Guardar en Supabase si está habilitado
+                    if (USE_SUPABASE) {
+                        const supabaseMovement = {
+                            id: movement.id,
+                            type: movement.type,
+                            date: movement.date,
+                            amount: movement.amount,
+                            description: movement.description,
+                            account_id: movement.accountId,
+                            category_id: movement.categoryId,
+                            subcategory_id: movement.subcategoryId,
+                            from_account_id: movement.fromAccountId,
+                            to_account_id: movement.toAccountId,
+                            notes: movement.notes,
+                            paid_by: null,
+                            created_at: movement.createdAt
+                        };
+                        
+                        const { error } = await supabaseClient
+                            .from('movements')
+                            .insert(supabaseMovement);
+                        
+                        if (error) {
+                            console.error('Error guardando en Supabase:', error);
+                        }
+                    }
+                    
                     imported++;
 
                 } catch (error) {
@@ -3127,7 +3184,7 @@ var USE_SUPABASE = false;
                     logCSV(`📑 Hojas encontradas: ${workbook.SheetNames.join(', ')}`);
 
                     // Importar solo movimientos (no categorías)
-                    const movementsResult = importMovementsFromExcel(workbook, accountId);
+                    const movementsResult = await importMovementsFromExcel(workbook, accountId);
 
                     // Mostrar resumen
                     showCSVImportSummary(movementsResult);
