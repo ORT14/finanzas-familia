@@ -2757,7 +2757,7 @@ var USE_SUPABASE = false;
                 const inferredDescIdx = descIdx !== -1 ? descIdx : 2;
                 const inferredAmountIdx = amountIdx !== -1 ? amountIdx : 4;
                 
-                return importMovementsByPosition(data, headerRowIndex + 1, inferredDateIdx, inferredDescIdx, inferredAmountIdx, defaultAccountId);
+                return await importMovementsByPosition(data, headerRowIndex + 1, inferredDateIdx, inferredDescIdx, inferredAmountIdx, defaultAccountId);
             }
 
             let imported = 0;
