@@ -2539,7 +2539,7 @@ var USE_SUPABASE = false;
             const reader = new FileReader();
             reader.onerror = () => log('❌ Error al leer archivo', true);
             
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     log('📖 Leyendo archivo...');
                     
@@ -3197,7 +3197,7 @@ var USE_SUPABASE = false;
             const reader = new FileReader();
             reader.onerror = () => logCSV('❌ Error al leer archivo', true);
             
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     logCSV('📖 Leyendo Excel...');
                     
