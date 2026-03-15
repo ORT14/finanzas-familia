@@ -1816,9 +1816,13 @@ var USE_SUPABASE = false;
                 } else if (view === 'categories') {
                     renderCategoriesList();
                 } else if (view === 'budgets') {
-                    initBudgetsView();  // ← NUEVO
+                    initBudgetsView();
                 } else if (view === 'analysis') {
-                    initAnalysisView();  // ← NUEVO
+                    initAnalysisView();
+                } else if (view === 'split') {
+                    if (typeof initSplitExpensesView === 'function') {
+                        initSplitExpensesView();
+                    }
                 } else if (view === 'settings') {
                     updateSettingsInfo();
                 }
@@ -2763,6 +2767,7 @@ var USE_SUPABASE = false;
             let imported = 0;
             let duplicates = 0;
             let errors = 0;
+            const movementsToInsert = []; // Array para batch insert
 
             // Process rows (skip header row)
             for (let i = headerRowIndex + 1; i < data.length; i++) {
@@ -2850,9 +2855,9 @@ var USE_SUPABASE = false;
 
                     state.movements.push(movement);
                     
-                    // Guardar en Supabase si está habilitado
+                    // Preparar para Supabase
                     if (USE_SUPABASE) {
-                        const supabaseMovement = {
+                        movementsToInsert.push({
                             id: movement.id,
                             type: movement.type,
                             date: movement.date,
@@ -2866,15 +2871,7 @@ var USE_SUPABASE = false;
                             notes: movement.notes,
                             paid_by: null,
                             created_at: movement.createdAt
-                        };
-                        
-                        const { error } = await supabaseClient
-                            .from('movements')
-                            .insert(supabaseMovement);
-                        
-                        if (error) {
-                            console.error('Error guardando en Supabase:', error);
-                        }
+                        });
                     }
                     
                     imported++;
@@ -2882,6 +2879,26 @@ var USE_SUPABASE = false;
                 } catch (error) {
                     errors++;
                     console.error(`Error en fila ${i + 1}:`, error);
+                }
+            }
+
+            // Insertar TODOS los movimientos en Supabase de una vez
+            if (USE_SUPABASE && movementsToInsert.length > 0) {
+                log(`💾 Guardando ${movementsToInsert.length} movimientos en Supabase...`);
+                try {
+                    const { error } = await supabaseClient
+                        .from('movements')
+                        .insert(movementsToInsert);
+                    
+                    if (error) {
+                        console.error('❌ Error guardando en Supabase:', error);
+                        log(`❌ Error al guardar en Supabase: ${error.message}`, true);
+                    } else {
+                        log(`✅ ${movementsToInsert.length} movimientos guardados en Supabase`);
+                    }
+                } catch (err) {
+                    console.error('❌ Error crítico:', err);
+                    log(`❌ Error crítico: ${err.message}`, true);
                 }
             }
 
@@ -2905,6 +2922,7 @@ var USE_SUPABASE = false;
             let imported = 0;
             let skipped = 0;
             let errors = 0;
+            const movementsToInsert = []; // Array para batch insert
 
             for (let i = startRow; i < data.length; i++) {
                 const row = data[i];
@@ -2925,9 +2943,6 @@ var USE_SUPABASE = false;
                         skipped++;
                         continue;
                     }
-
-                    // NO CHECK FOR DUPLICATES - Import all movements
-                    // User requested to import including duplicates
 
                     // Determine type from amount sign
                     const type = amount < 0 ? 'expense' : 'income';
@@ -2956,9 +2971,9 @@ var USE_SUPABASE = false;
                     // Guardar en state
                     state.movements.push(movement);
                     
-                    // Guardar en Supabase si está habilitado
+                    // Preparar para Supabase
                     if (USE_SUPABASE) {
-                        const supabaseMovement = {
+                        movementsToInsert.push({
                             id: movement.id,
                             type: movement.type,
                             date: movement.date,
@@ -2972,15 +2987,7 @@ var USE_SUPABASE = false;
                             notes: movement.notes,
                             paid_by: null,
                             created_at: movement.createdAt
-                        };
-                        
-                        const { error } = await supabaseClient
-                            .from('movements')
-                            .insert(supabaseMovement);
-                        
-                        if (error) {
-                            console.error('Error guardando en Supabase:', error);
-                        }
+                        });
                     }
                     
                     imported++;
@@ -2988,6 +2995,26 @@ var USE_SUPABASE = false;
                 } catch (error) {
                     errors++;
                     console.error(`Error en fila ${i + 1}:`, error);
+                }
+            }
+
+            // Insertar TODOS los movimientos en Supabase de una vez
+            if (USE_SUPABASE && movementsToInsert.length > 0) {
+                log(`💾 Guardando ${movementsToInsert.length} movimientos en Supabase...`);
+                try {
+                    const { error } = await supabaseClient
+                        .from('movements')
+                        .insert(movementsToInsert);
+                    
+                    if (error) {
+                        console.error('❌ Error guardando en Supabase:', error);
+                        log(`❌ Error al guardar en Supabase: ${error.message}`, true);
+                    } else {
+                        log(`✅ ${movementsToInsert.length} movimientos guardados en Supabase`);
+                    }
+                } catch (err) {
+                    console.error('❌ Error crítico:', err);
+                    log(`❌ Error crítico: ${err.message}`, true);
                 }
             }
 
