@@ -6139,6 +6139,46 @@ async function toggleSharedCategory(categoryId, isShared) {
 }
 
 /**
+ * Toggle de subcategoría compartida
+ */
+async function toggleSharedSubcategory(categoryId, subcategoryId, isShared) {
+    // Actualizar en state local
+    const category = state.categories.find(c => c.id === categoryId);
+    if (category) {
+        // Inicializar array si no existe
+        if (!category.sharedSubcategories) {
+            category.sharedSubcategories = [];
+        }
+        
+        // Agregar o quitar subcategoría del array
+        if (isShared) {
+            if (!category.sharedSubcategories.includes(subcategoryId)) {
+                category.sharedSubcategories.push(subcategoryId);
+            }
+        } else {
+            category.sharedSubcategories = category.sharedSubcategories.filter(id => id !== subcategoryId);
+        }
+    }
+    
+    // Actualizar en Supabase (guardar array como JSON)
+    if (USE_SUPABASE && supabaseClient) {
+        try {
+            await supabaseClient
+                .from('categories')
+                .update({ shared_subcategories: category.sharedSubcategories })
+                .eq('id', categoryId);
+            
+            console.log(`✅ Subcategoría ${subcategoryId} de ${categoryId} ${isShared ? 'compartida' : 'personal'}`);
+        } catch (error) {
+            console.error('Error actualizando subcategoría:', error);
+        }
+    }
+    
+    // Guardar en localStorage
+    await saveState();
+}
+
+/**
  * Renderizar lista de categorías con checkbox de "compartida"
  */
 function renderSharedCategoriesConfig() {
@@ -6147,23 +6187,61 @@ function renderSharedCategoriesConfig() {
     
     const expenseCategories = state.categories.filter(c => c.type === 'expense' && c.id !== 'sin-categorizar');
     
-    let html = '<div class="shared-categories-grid">';
+    let html = '<div style="max-height: 400px; overflow-y: auto;">';
     
     expenseCategories.forEach(cat => {
-        const isShared = cat.shared || false;
-        
+        // Mostrar categoría principal como encabezado
         html += `
-            <div class="shared-category-item">
-                <label class="checkbox-label">
-                    <input 
-                        type="checkbox" 
-                        ${isShared ? 'checked' : ''}
-                        onchange="toggleSharedCategory('${cat.id}', this.checked)"
-                    >
-                    <span>${cat.icon || '📁'} ${cat.name}</span>
-                </label>
-            </div>
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin: 10px 0; padding: 8px; background: var(--gray-100); border-radius: 6px; font-size: 14px;">
+                    ${cat.icon || '📁'} ${cat.name}
+                </h4>
         `;
+        
+        // Si tiene subcategorías, mostrarlas
+        if (cat.subcategories && cat.subcategories.length > 0) {
+            html += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding-left: 16px;">';
+            
+            cat.subcategories.forEach(subcat => {
+                const subcatKey = `${cat.id}_${subcat.id}`;
+                const isShared = cat.sharedSubcategories?.includes(subcat.id) || false;
+                
+                html += `
+                    <div class="shared-category-item" style="margin: 0;">
+                        <label class="checkbox-label" style="font-size: 13px;">
+                            <input 
+                                type="checkbox" 
+                                ${isShared ? 'checked' : ''}
+                                onchange="toggleSharedSubcategory('${cat.id}', '${subcat.id}', this.checked)"
+                            >
+                            <span>${subcat.name}</span>
+                        </label>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        } else {
+            // Si no tiene subcategorías, marcar la categoría completa
+            const isShared = cat.shared || false;
+            
+            html += `
+                <div style="padding-left: 16px;">
+                    <div class="shared-category-item">
+                        <label class="checkbox-label">
+                            <input 
+                                type="checkbox" 
+                                ${isShared ? 'checked' : ''}
+                                onchange="toggleSharedCategory('${cat.id}', this.checked)"
+                            >
+                            <span>Toda la categoría</span>
+                        </label>
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
     });
     
     html += '</div>';
@@ -6241,7 +6319,20 @@ async function renderSplitExpenses() {
     
     monthMovements.forEach(m => {
         const category = state.categories.find(c => c.id === m.categoryId);
-        const isShared = category?.shared || false;
+        
+        // Determinar si es compartido basado en subcategorías
+        let isShared = false;
+        
+        if (category) {
+            // Si la categoría tiene subcategorías configuradas como compartidas
+            if (category.sharedSubcategories && category.sharedSubcategories.length > 0) {
+                // Es compartido solo si la subcategoría está en la lista
+                isShared = m.subcategoryId && category.sharedSubcategories.includes(m.subcategoryId);
+            } else {
+                // Si no tiene subcategorías compartidas específicas, usar el flag de categoría
+                isShared = category.shared || false;
+            }
+        }
         
         if (isShared) {
             sharedExpenses.push(m);
