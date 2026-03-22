@@ -6335,17 +6335,23 @@ function renderSplitBreakdown(sharedExpenses, percentages) {
     
     sharedExpenses.forEach(m => {
         const category = state.categories.find(c => c.id === m.categoryId);
-        const catName = category ? `${category.icon || '📁'} ${category.name}` : 'Sin categoría';
+        const catName = category ? category.name : 'Sin categoría';
+        const catId = category ? category.id : 'sin-cat';
         
-        if (!byCategory[catName]) {
-            byCategory[catName] = { total: 0, movements: [] };
+        if (!byCategory[catId]) {
+            byCategory[catId] = { 
+                name: catName,
+                icon: category?.icon || '📁',
+                total: 0, 
+                movements: [] 
+            };
         }
         
-        byCategory[catName].total += m.amount;
-        byCategory[catName].movements.push(m);
+        byCategory[catId].total += m.amount;
+        byCategory[catId].movements.push(m);
     });
     
-    // Renderizar tabla
+    // Renderizar tabla resumen
     let html = `
         <table class="data-table">
             <thead>
@@ -6362,17 +6368,43 @@ function renderSplitBreakdown(sharedExpenses, percentages) {
     
     Object.entries(byCategory)
         .sort((a, b) => b[1].total - a[1].total)
-        .forEach(([catName, data]) => {
+        .forEach(([catId, data]) => {
             const oriolAmount = data.total * (percentages.oriol / 100);
             const paulaAmount = data.total * (percentages.paula / 100);
             
             html += `
-                <tr>
-                    <td><strong>${catName}</strong></td>
+                <tr onclick="toggleCategoryMovements('${catId}')" style="cursor: pointer;">
+                    <td><strong>${data.icon} ${data.name}</strong> <span style="color: var(--gray-500); font-size: 0.9em;">▼</span></td>
                     <td><strong>${data.total.toFixed(2)}€</strong></td>
                     <td>${oriolAmount.toFixed(2)}€</td>
                     <td>${paulaAmount.toFixed(2)}€</td>
                     <td>${data.movements.length}</td>
+                </tr>
+                <tr id="movements-${catId}" style="display: none;">
+                    <td colspan="5" style="padding: 0; background: var(--gray-50);">
+                        <div style="padding: 16px;">
+                            <table style="width: 100%; border: none;">
+                                <thead>
+                                    <tr style="background: transparent;">
+                                        <th style="text-align: left; font-size: 0.9em;">Fecha</th>
+                                        <th style="text-align: left; font-size: 0.9em;">Descripción</th>
+                                        <th style="text-align: right; font-size: 0.9em;">Importe</th>
+                                        <th style="text-align: left; font-size: 0.9em;">Pagado por</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.movements.map(m => `
+                                        <tr style="background: white;">
+                                            <td style="font-size: 0.9em; padding: 8px;">${m.date}</td>
+                                            <td style="font-size: 0.9em; padding: 8px;">${m.description}</td>
+                                            <td style="font-size: 0.9em; padding: 8px; text-align: right; font-weight: 600;">${m.amount.toFixed(2)}€</td>
+                                            <td style="font-size: 0.9em; padding: 8px;">${m.paidBy === 'Oriol' ? '👨 Oriol' : m.paidBy === 'Paula' ? '👩 Paula' : m.paidBy === 'Ambos' ? '👥 Ambos' : '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </td>
                 </tr>
             `;
         });
@@ -6393,6 +6425,16 @@ function renderSplitBreakdown(sharedExpenses, percentages) {
     `;
     
     container.innerHTML = html;
+}
+
+/**
+ * Mostrar/ocultar movimientos de una categoría
+ */
+function toggleCategoryMovements(categoryId) {
+    const row = document.getElementById(`movements-${categoryId}`);
+    if (row) {
+        row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    }
 }
 
 // ============================================================================
