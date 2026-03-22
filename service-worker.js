@@ -1,26 +1,29 @@
-const CACHE_NAME = 'finanzas-familia-v2';
+const CACHE_NAME = 'finanzas-familia-v3';
 const urlsToCache = [
   '/finanzas-familia/',
   '/finanzas-familia/index.html',
   '/finanzas-familia/manifest.json'
 ];
 
-// Install event - cache files
+// Install event - cache files and take control immediately
 self.addEventListener('install', (event) => {
-  console.log('[ServiceWorker] Installing...');
+  console.log('[ServiceWorker] Installing new version...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('[ServiceWorker] Caching app shell');
         return cache.addAll(urlsToCache);
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('[ServiceWorker] Skip waiting - take control immediately');
+        return self.skipWaiting();
+      })
   );
 });
 
-// Activate event - clean old caches
+// Activate event - clean old caches and take control immediately
 self.addEventListener('activate', (event) => {
-  console.log('[ServiceWorker] Activating...');
+  console.log('[ServiceWorker] Activating new version...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -31,42 +34,53 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      console.log('[ServiceWorker] Claiming all clients');
+      return self.clients.claim();
+    }).then(() => {
+      // Notify all clients to reload
+      return self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'RELOAD' });
+        });
+      });
+    })
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - NETWORK FIRST strategy for better updates
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-
-        // Clone the request
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then((response) => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          // Clone the response
-          const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-
-          return response;
-        }).catch(() => {
-          // Offline fallback
-          return caches.match('/finanzas-familia/index.html');
-        });
+        // Clone the response
+        const responseToCache = response.clone();
+        
+        // Update cache with fresh content
+        caches.open(CACHE_NAME)
+          .then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try cache
+        return caches.match(event.request)
+          .then((response) => {
+            if (response) {
+              return response;
+            }
+            // Offline fallback
+            return caches.match('/finanzas-familia/index.html');
+          });
       })
   );
+});
+
+// Listen for messages from clients
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
