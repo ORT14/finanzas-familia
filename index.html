@@ -474,6 +474,26 @@
                 width: 100%;
             }
 
+            /* Filtro de cuenta en móvil */
+            .card-header + div {
+                padding: 12px !important;
+            }
+
+            .card-header + div > div {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            .card-header + div label {
+                font-size: 13px !important;
+            }
+
+            .card-header + div select {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+            }
+
             /* Ajustar badges y botones en tabla */
             .badge {
                 font-size: 10px;
@@ -494,6 +514,28 @@
             #movements-account-filter {
                 max-width: 100% !important;
                 font-size: 13px;
+            }
+
+            /* Sección Importar/Ajustes responsive */
+            .card h3 {
+                font-size: 18px !important;
+            }
+
+            .card p {
+                font-size: 13px !important;
+            }
+
+            .btn {
+                font-size: 14px !important;
+                padding: 12px 20px !important;
+            }
+
+            /* Logs de importación más pequeños en móvil */
+            #import-log-content,
+            #csv-import-log-content,
+            #categorize-log-content {
+                font-size: 11px !important;
+                max-height: 200px !important;
             }
         }
 
@@ -1018,6 +1060,20 @@
                         </select>
                     </div>
 
+                    <!-- Filtro por cuenta -->
+                    <div style="padding: 16px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200);">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <label style="font-weight: 600; font-size: 14px; color: var(--gray-700);">
+                                🏦 Filtrar por cuenta:
+                            </label>
+                            <select id="movements-account-filter" 
+                                    onchange="filterMovementsByAccount()"
+                                    style="padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 14px; min-width: 200px; flex: 1; max-width: 300px;">
+                                <option value="all">Todas las cuentas</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div id="movements-table-container"></div>
                 </div>
             </div>
@@ -1143,10 +1199,20 @@
                         </select>
                     </div>
 
-                    <input type="file" id="csv-file-input" accept=".csv,.txt,.xls,.xlsx" style="display: none;" onchange="handleBankFileImport(event)">
-                    <button class="btn btn-primary" onclick="document.getElementById('csv-file-input').click()">
+                    <input type="file" id="csv-file-input" accept=".csv,.txt,.xls,.xlsx" style="display: none;" onchange="handleBankFileImport(event)" capture="environment">
+                    <button class="btn btn-primary" onclick="document.getElementById('csv-file-input').click()" style="width: 100%;">
                         📥 Seleccionar archivo (CSV o Excel)
                     </button>
+                    
+                    <div style="margin-top: 12px; padding: 12px; background: #E3F2FD; border-radius: 6px; font-size: 13px;">
+                        <strong>💡 Consejo móvil:</strong> Puedes seleccionar archivos desde:
+                        <ul style="margin: 8px 0 0 20px; padding: 0;">
+                            <li>📱 Archivos locales</li>
+                            <li>☁️ Google Drive</li>
+                            <li>📧 Adjuntos de email</li>
+                            <li>💾 Descargas</li>
+                        </ul>
+                    </div>
 
                     <div id="csv-import-log" style="margin-top: 20px; display: none;">
                         <div style="background: var(--gray-50); padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto;" id="csv-import-log-content"></div>
@@ -2061,6 +2127,7 @@ var USE_SUPABASE = false;
         // ============================================================================
 
         let currentMovementsViewMain = 'all';
+        let currentAccountFilter = 'all';
         let currentAccountFilter = 'all';
 
         function switchMovementsViewMain(view) {
@@ -3282,19 +3349,43 @@ var USE_SUPABASE = false;
 
             const accountId = document.getElementById('csv-default-account').value;
             if (!accountId) {
-                alert('Por favor selecciona una cuenta destino');
+                alert('⚠️ Por favor selecciona una cuenta destino primero');
                 event.target.value = ''; // Reset input
                 return;
             }
 
+            // Mostrar indicador de carga
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'import-loading';
+            loadingDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            loadingDiv.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; text-align: center; max-width: 300px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+                    <h3 style="margin: 0 0 8px 0;">Importando archivo...</h3>
+                    <p style="color: var(--gray-600); margin: 0; font-size: 14px;">
+                        Procesando ${file.name}
+                    </p>
+                </div>
+            `;
+            document.body.appendChild(loadingDiv);
+
             // Detectar si es Excel o CSV
             const isExcel = file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.xlsx');
             
-            if (isExcel) {
-                handleExcelBankImport(file, accountId);
-            } else {
-                handleCSVImport(event);
-            }
+            // Dar tiempo para que se muestre el loading
+            setTimeout(() => {
+                if (isExcel) {
+                    handleExcelBankImport(file, accountId);
+                } else {
+                    handleCSVImport(event);
+                }
+                
+                // Quitar loading después de procesar
+                setTimeout(() => {
+                    const loading = document.getElementById('import-loading');
+                    if (loading) loading.remove();
+                }, 1000);
+            }, 100);
         }
 
         function handleExcelBankImport(file, accountId) {
