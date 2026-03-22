@@ -430,6 +430,68 @@
             .form-grid {
                 grid-template-columns: 1fr;
             }
+
+            /* Convertir tabla en tarjetas en móvil */
+            .movements-table {
+                display: block;
+            }
+
+            .movements-table thead {
+                display: none;
+            }
+
+            .movements-table tbody {
+                display: block;
+            }
+
+            .movements-table tr {
+                display: block;
+                background: white;
+                border: 1px solid var(--gray-200);
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 12px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+
+            .movements-table td {
+                display: flex;
+                justify-content: space-between;
+                padding: 8px 0 !important;
+                border: none !important;
+                text-align: right !important;
+            }
+
+            .movements-table td:before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: var(--gray-700);
+                text-align: left;
+                flex: 1;
+            }
+
+            .movements-table td:last-child {
+                border-top: 1px solid var(--gray-200);
+                padding-top: 12px !important;
+                margin-top: 8px;
+                justify-content: flex-end;
+            }
+
+            /* Ajustar badges y botones */
+            .badge {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+
+            .btn-sm {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+
+            /* Balance total más grande en móvil */
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Category tabs */
@@ -2086,18 +2148,18 @@ var USE_SUPABASE = false;
 
                 return `
                     <tr>
-                        <td style="white-space: nowrap; font-size: 13px;">${mov.date}</td>
-                        <td style="font-size: 13px;">${account ? account.name : 'N/A'}</td>
-                        <td><span class="badge ${typeBadge}">${typeLabel}</span></td>
-                        <td><strong>${category ? category.name : 'Sin categoría'}</strong></td>
-                        <td style="font-size: 13px;">${subcategoryName || '-'}</td>
-                        <td><strong>${mov.description}</strong></td>
-                        <td style="text-align: right; font-weight: 700; color: ${mov.type === 'expense' ? '#C0392B' : mov.type === 'income' ? '#1E7E34' : '#8E44AD'}; white-space: nowrap;">
+                        <td data-label="Fecha" style="white-space: nowrap; font-size: 13px;">${mov.date}</td>
+                        <td data-label="Cuenta" style="font-size: 13px;">${account ? account.name : 'N/A'}</td>
+                        <td data-label="Tipo"><span class="badge ${typeBadge}">${typeLabel}</span></td>
+                        <td data-label="Categoría"><strong>${category ? category.name : 'Sin categoría'}</strong></td>
+                        <td data-label="Subcategoría" style="font-size: 13px;">${subcategoryName || '-'}</td>
+                        <td data-label="Descripción"><strong>${mov.description}</strong></td>
+                        <td data-label="Importe" style="text-align: right; font-weight: 700; color: ${mov.type === 'expense' ? '#C0392B' : mov.type === 'income' ? '#1E7E34' : '#8E44AD'}; white-space: nowrap;">
                             ${mov.amount.toFixed(2)} €
                         </td>
-                        <td style="font-size: 12px; color: var(--gray-600);">${method}</td>
-                        <td style="font-size: 13px;">${person}</td>
-                        <td>
+                        <td data-label="Método" style="font-size: 12px; color: var(--gray-600);">${method}</td>
+                        <td data-label="Persona" style="font-size: 13px;">${person}</td>
+                        <td data-label="Pagado por">
                             <select 
                                 class="paid-by-select" 
                                 onchange="updateMovementPaidBy('${mov.id}', this.value)"
@@ -2108,7 +2170,7 @@ var USE_SUPABASE = false;
                                 <option value="Ambos" ${mov.paidBy === 'Ambos' ? 'selected' : ''}>👥 Ambos</option>
                             </select>
                         </td>
-                        <td style="white-space: nowrap;">
+                        <td data-label="Acciones" style="white-space: nowrap;">
                             <button class="btn btn-sm" style="background: var(--primary-light); color: white;"
                                     onclick="editMovement('${mov.id}')" title="Editar">✏️</button>
                             <button class="btn btn-sm" style="background: var(--warning); color: white;" 
