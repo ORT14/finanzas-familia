@@ -431,64 +431,61 @@
                 grid-template-columns: 1fr;
             }
 
-            /* Convertir tabla en tarjetas en móvil */
+            /* Tabla responsive - scroll horizontal */
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
             .movements-table {
-                display: block;
+                font-size: 12px;
+                min-width: 800px; /* Fuerza scroll horizontal */
             }
 
-            .movements-table thead {
-                display: none;
-            }
-
-            .movements-table tbody {
-                display: block;
-            }
-
-            .movements-table tr {
-                display: block;
-                background: white;
-                border: 1px solid var(--gray-200);
-                border-radius: 8px;
-                padding: 16px;
-                margin-bottom: 12px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-
+            .movements-table th,
             .movements-table td {
-                display: flex;
-                justify-content: space-between;
-                padding: 8px 0 !important;
-                border: none !important;
-                text-align: right !important;
-            }
-
-            .movements-table td:before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: var(--gray-700);
-                text-align: left;
-                flex: 1;
-            }
-
-            .movements-table td:last-child {
-                border-top: 1px solid var(--gray-200);
-                padding-top: 12px !important;
-                margin-top: 8px;
-                justify-content: flex-end;
-            }
-
-            /* Ajustar badges y botones */
-            .badge {
+                padding: 8px 6px !important;
                 font-size: 11px;
-                padding: 4px 8px;
+            }
+
+            /* Botones de filtro de movimientos en móvil */
+            .card-header {
+                flex-direction: column !important;
+                gap: 12px;
+            }
+
+            .card-header > div {
+                width: 100%;
+            }
+
+            .card-header > div > div {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+            }
+
+            .card-header button {
+                font-size: 12px !important;
+                padding: 10px 8px !important;
+                text-align: center;
+            }
+
+            .card-header .btn-primary {
+                width: 100%;
+            }
+
+            /* Ajustar badges y botones en tabla */
+            .badge {
+                font-size: 10px;
+                padding: 3px 6px;
             }
 
             .btn-sm {
-                padding: 4px 8px;
-                font-size: 11px;
+                padding: 4px 6px;
+                font-size: 10px;
             }
 
-            /* Balance total más grande en móvil */
+            /* Balance total */
             .stats-grid {
                 grid-template-columns: 1fr;
             }
