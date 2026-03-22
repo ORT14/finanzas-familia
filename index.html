@@ -489,6 +489,12 @@
             .stats-grid {
                 grid-template-columns: 1fr;
             }
+
+            /* Filtro de cuenta responsive */
+            #movements-account-filter {
+                max-width: 100% !important;
+                font-size: 13px;
+            }
         }
 
         /* Category tabs */
@@ -999,6 +1005,17 @@
                         <button class="btn btn-primary" onclick="showAddMovementModal()" style="white-space: nowrap;">
                             + Nuevo movimiento
                         </button>
+                    </div>
+
+                    <!-- Filtro por cuenta -->
+                    <div style="padding: 16px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; gap: 12px;">
+                        <label style="font-weight: 600; font-size: 14px; color: var(--gray-700); white-space: nowrap;">
+                            🏦 Filtrar por cuenta:
+                        </label>
+                        <select id="movements-account-filter" onchange="filterMovementsByAccount()" 
+                                class="form-control" style="max-width: 300px;">
+                            <option value="all">Todas las cuentas</option>
+                        </select>
                     </div>
 
                     <div id="movements-table-container"></div>
@@ -1871,6 +1888,7 @@ var USE_SUPABASE = false;
                 if (view === 'dashboard') {
                     applyDashboardFilters();
                 } else if (view === 'movements') {
+                    populateAccountFilter();
                     renderMovementsTable();
                 } else if (view === 'categories') {
                     renderCategoriesList();
@@ -2043,6 +2061,7 @@ var USE_SUPABASE = false;
         // ============================================================================
 
         let currentMovementsViewMain = 'all';
+        let currentAccountFilter = 'all';
 
         function switchMovementsViewMain(view) {
             currentMovementsViewMain = view;
@@ -2067,13 +2086,42 @@ var USE_SUPABASE = false;
             renderMovementsTable();
         }
 
+        function populateAccountFilter() {
+            const select = document.getElementById('movements-account-filter');
+            if (!select) return;
+
+            const options = ['<option value="all">Todas las cuentas</option>'];
+            
+            state.accounts.forEach(account => {
+                options.push(`<option value="${account.id}">${account.name}</option>`);
+            });
+
+            select.innerHTML = options.join('');
+            select.value = currentAccountFilter;
+        }
+
+        function filterMovementsByAccount() {
+            const select = document.getElementById('movements-account-filter');
+            currentAccountFilter = select.value;
+            renderMovementsTable();
+        }
+
         function renderMovementsTable() {
             const container = document.getElementById('movements-table-container');
             
-            // Filter by current view
+            // Filter by current view (type)
             let filtered = state.movements;
             if (currentMovementsViewMain !== 'all') {
                 filtered = state.movements.filter(m => m.type === currentMovementsViewMain);
+            }
+
+            // Filter by account
+            if (currentAccountFilter !== 'all') {
+                filtered = filtered.filter(m => 
+                    m.accountId === currentAccountFilter || 
+                    m.fromAccountId === currentAccountFilter || 
+                    m.toAccountId === currentAccountFilter
+                );
             }
 
             if (filtered.length === 0) {
@@ -2081,6 +2129,11 @@ var USE_SUPABASE = false;
                 if (currentMovementsViewMain === 'income') emptyMessage = 'No hay ingresos registrados';
                 else if (currentMovementsViewMain === 'expense') emptyMessage = 'No hay gastos registrados';
                 else if (currentMovementsViewMain === 'transfer') emptyMessage = 'No hay transferencias registradas';
+                
+                if (currentAccountFilter !== 'all') {
+                    const account = state.accounts.find(a => a.id === currentAccountFilter);
+                    emptyMessage += ` en ${account ? account.name : 'esta cuenta'}`;
+                }
                 
                 container.innerHTML = `
                     <div class="empty-state">
