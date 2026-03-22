@@ -1,8 +1,8 @@
-const CACHE_NAME = 'finanzas-familia-v1';
+const CACHE_NAME = 'finanzas-familia-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  '/finanzas-familia/',
+  '/finanzas-familia/index.html',
+  '/finanzas-familia/manifest.json'
 ];
 
 // Install event - cache files
@@ -65,7 +65,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         }).catch(() => {
           // Offline fallback
-          return caches.match('/index.html');
+          return caches.match('/finanzas-familia/index.html');
         });
       })
   );

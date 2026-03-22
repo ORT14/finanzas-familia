@@ -2,7 +2,7 @@
   "name": "Finanzas Familia",
   "short_name": "Finanzas",
   "description": "Gestión de finanzas familiares - Oriol y Paula",
-  "start_url": "/",
+  "start_url": "/finanzas-familia/",
   "display": "standalone",
   "background_color": "#1E3A5F",
   "theme_color": "#1E3A5F",
